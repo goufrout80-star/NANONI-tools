@@ -1,16 +1,41 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useState, useEffect } from "react";
+import { Navbar } from "@/components/Navbar";
+import { Hero } from "@/components/Hero";
+import { StatsBar } from "@/components/StatsBar";
+import { MarqueeStrip } from "@/components/MarqueeStrip";
+import { OrbitalTools } from "@/components/OrbitalTools";
+import { Pricing } from "@/components/Pricing";
+import { FAQ } from "@/components/FAQ";
+import { Footer } from "@/components/Footer";
+import { SidebarNav } from "@/components/SidebarNav";
+import { LoadingScreen } from "@/components/LoadingScreen";
+import { SpotlightEffect } from "@/components/SpotlightEffect";
+import { CookiesBanner } from "@/components/CookiesBanner";
 
-// IMPORTANT: Fully REPLACE this with your own code
-const PlaceholderIndex = () => {
-  // PLACEHOLDER: Replace this entire return statement with the user's app.
-  // The inline background color is intentionally not part of the design system.
+export default function Index() {
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setLoading(false), 1800);
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
-    <div className="flex min-h-screen items-center justify-center" style={{ backgroundColor: '#fcfbf8' }}>
-      <img data-lovable-blank-page-placeholder="REMOVE_THIS" src="/placeholder.svg" alt="Your app will live here!" />
-    </div>
+    <>
+      <LoadingScreen isLoading={loading} />
+      <SpotlightEffect />
+      <CookiesBanner />
+      <Navbar />
+      <SidebarNav />
+      <main>
+        <Hero />
+        <StatsBar />
+        <MarqueeStrip />
+        <OrbitalTools />
+        <Pricing />
+        <FAQ />
+      </main>
+      <Footer />
+    </>
   );
-};
-
-const Index = PlaceholderIndex;
-
-export default Index;
+}
