@@ -8,9 +8,7 @@ export default {
     container: {
       center: true,
       padding: "2rem",
-      screens: {
-        "2xl": "1400px",
-      },
+      screens: { "2xl": "1400px" },
     },
     extend: {
       fontFamily: {
@@ -24,6 +22,8 @@ export default {
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
         orange: "hsl(var(--orange))",
+        purple: "hsl(var(--purple))",
+        surface: "hsl(var(--surface))",
         "soft-gray": "hsl(var(--soft-gray))",
         "warm-white": "hsl(var(--warm-white))",
         "nano-black": "hsl(var(--nano-black))",
@@ -93,13 +93,19 @@ export default {
           from: { transform: "translateX(0)" },
           to: { transform: "translateX(-50%)" },
         },
+        "marquee-reverse": {
+          from: { transform: "translateX(-50%)" },
+          to: { transform: "translateX(0)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
-        "orbit-slow": "orbit 50s linear infinite",
-        "orbit-fast": "orbit 30s linear infinite",
-        marquee: "marquee 30s linear infinite",
+        "orbit-slow": "orbit 35s linear infinite",
+        "orbit-fast": "orbit 20s linear infinite",
+        "orbit-medium": "orbit 28s linear infinite",
+        marquee: "marquee 40s linear infinite",
+        "marquee-reverse": "marquee-reverse 40s linear infinite",
       },
     },
   },

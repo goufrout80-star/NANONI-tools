@@ -38,30 +38,35 @@ export const SidebarNav = () => {
   return (
     <motion.aside
       style={{ opacity, x }}
-      className="fixed left-6 top-1/2 -translate-y-1/2 z-40 hidden xl:flex flex-col gap-10"
+      className="fixed left-6 top-1/2 -translate-y-1/2 z-40 hidden xl:flex flex-col gap-8 w-[180px] p-4 rounded-2xl"
+      aria-label="Page navigation"
     >
-      <nav className="flex flex-col gap-3 border-l border-border pl-4">
+      {/* Section nav */}
+      <nav className="flex flex-col gap-2 border-l border-[hsla(245,100%,71%,0.15)] pl-4">
         {SECTIONS.map((s) => (
           <button
             key={s.id}
             onClick={() => scrollTo(s.id)}
-            className={`text-[11px] uppercase tracking-[0.15em] text-left transition-colors flex items-center gap-2 ${
-              active === s.id ? "text-orange" : "text-muted-foreground hover:text-foreground"
+            className={`text-[11px] uppercase tracking-[0.15em] text-left transition-all duration-300 flex items-center gap-2.5 py-1 ${
+              active === s.id ? "text-orange" : "text-soft-gray hover:text-foreground"
             }`}
           >
-            <div className={`w-1.5 h-1.5 rounded-full transition-colors ${active === s.id ? "bg-orange" : "bg-muted-foreground/30"}`} />
+            <div className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
+              active === s.id ? "bg-orange shadow-[0_0_6px_hsla(14,100%,50%,0.5)]" : "bg-soft-gray/30"
+            }`} />
             {s.label}
           </button>
         ))}
       </nav>
 
-      <div className="border-l border-border pl-4 max-h-[30vh] overflow-y-auto scrollbar-hide">
-        <p className="text-[10px] uppercase text-orange font-bold mb-2 tracking-wider">19 Tools</p>
+      {/* Tools list */}
+      <div className="border-l border-[hsla(245,100%,71%,0.15)] pl-4 max-h-[30vh] overflow-y-auto scrollbar-thin">
+        <p className="text-[10px] uppercase text-purple font-bold mb-2 tracking-[0.15em]">19 Tools</p>
         {TOOLS.map((t) => (
           <button
             key={t.name}
             onClick={() => scrollTo("features")}
-            className="block text-[10px] text-muted-foreground hover:text-orange transition-colors py-0.5 truncate max-w-[120px]"
+            className="block text-[11px] text-soft-gray hover:text-orange hover:bg-orange/5 transition-all py-1 px-1 rounded truncate max-w-full w-full text-left"
           >
             {t.name}
           </button>
