@@ -2,10 +2,10 @@ import { motion, useInView } from "framer-motion";
 import { useRef, useState, useEffect } from "react";
 
 const STATS = [
-  { value: 19, label: "Tools" },
-  { value: 1, label: "Platform" },
-  { value: 0, label: "Powered by Gemini", isText: true },
-  { value: 0, label: "Built for Creators", isText: true },
+  { value: 19, label: "TOOLS", color: "text-orange" },
+  { value: 1, label: "PLATFORM", color: "text-purple" },
+  { value: 0, label: "Powered by Gemini", isText: true, color: "text-orange" },
+  { value: 0, label: "Built for Creators", isText: true, color: "text-purple" },
 ];
 
 const Counter = ({ target, inView }: { target: number; inView: boolean }) => {
@@ -34,7 +34,8 @@ export const StatsBar = () => {
       ref={ref}
       initial={{ opacity: 0 }}
       animate={inView ? { opacity: 1 } : {}}
-      className="border-y border-border py-12 px-6"
+      className="border-y border-border py-16 px-6"
+      style={{ background: "hsla(0,0%,100%,0.02)" }}
     >
       <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
         {STATS.map((s, i) => (
@@ -43,15 +44,16 @@ export const StatsBar = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={inView ? { opacity: 1, y: 0 } : {}}
             transition={{ delay: i * 0.1 }}
+            className={i < 3 ? "md:border-r md:border-border" : ""}
           >
             {s.isText ? (
-              <p className="text-lg font-bold text-foreground">{s.label}</p>
+              <p className={`text-lg font-bold ${s.color}`}>{s.label}</p>
             ) : (
               <>
-                <p className="text-4xl font-bold text-orange">
+                <p className={`text-5xl font-black ${s.color}`}>
                   <Counter target={s.value} inView={inView} />
                 </p>
-                <p className="text-sm text-muted-foreground mt-1">{s.label}</p>
+                <p className="text-xs uppercase tracking-[0.2em] text-soft-gray mt-2">{s.label}</p>
               </>
             )}
           </motion.div>

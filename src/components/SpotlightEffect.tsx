@@ -1,11 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef } from "react";
 
 export const SpotlightEffect = () => {
-  const [pos, setPos] = useState({ x: 0, y: 0 });
+  const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
     const handleMove = (e: MouseEvent) => {
-      setPos({ x: e.clientX, y: e.clientY });
+      el.style.background = `
+        radial-gradient(600px circle at ${e.clientX}px ${e.clientY}px, hsla(14,100%,50%,0.03), transparent 40%),
+        radial-gradient(400px circle at ${e.clientX}px ${e.clientY}px, hsla(245,100%,71%,0.03), transparent 40%)
+      `;
     };
     window.addEventListener("mousemove", handleMove);
     return () => window.removeEventListener("mousemove", handleMove);
@@ -13,10 +18,8 @@ export const SpotlightEffect = () => {
 
   return (
     <div
+      ref={ref}
       className="fixed inset-0 pointer-events-none z-50 hidden lg:block"
-      style={{
-        background: `radial-gradient(600px circle at ${pos.x}px ${pos.y}px, hsla(14,100%,50%,0.05), transparent 40%)`,
-      }}
     />
   );
 };

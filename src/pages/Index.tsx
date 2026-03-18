@@ -10,24 +10,36 @@ import { Footer } from "@/components/Footer";
 import { SidebarNav } from "@/components/SidebarNav";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { SpotlightEffect } from "@/components/SpotlightEffect";
+import { ParticlesCanvas } from "@/components/ParticlesCanvas";
 import { CookiesBanner } from "@/components/CookiesBanner";
 
 export default function Index() {
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => {
+    if (typeof window !== "undefined") {
+      return !sessionStorage.getItem("nanoni-loaded");
+    }
+    return true;
+  });
 
   useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 1800);
+    if (!loading) return;
+    const timer = setTimeout(() => {
+      setLoading(false);
+      sessionStorage.setItem("nanoni-loaded", "1");
+    }, 1800);
     return () => clearTimeout(timer);
-  }, []);
+  }, [loading]);
 
   return (
     <>
       <LoadingScreen isLoading={loading} />
       <SpotlightEffect />
+      <ParticlesCanvas />
+      <div className="fixed inset-0 dot-grid pointer-events-none z-0" aria-hidden="true" />
       <CookiesBanner />
       <Navbar />
       <SidebarNav />
-      <main>
+      <main className="relative z-10">
         <Hero />
         <StatsBar />
         <MarqueeStrip />
