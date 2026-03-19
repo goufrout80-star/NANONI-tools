@@ -167,7 +167,7 @@ serve(async (req) => {
       <p class="footer-text"> 
         © 2026 NANONI Studio. All rights reserved. 
       </p> 
-      <p class="footer-email">noreply@nanoni.studio</p> 
+      <p class="footer-email">hello@nanoni.studio</p> 
     </div> 
   </div> 
 </body> 
@@ -180,7 +180,7 @@ serve(async (req) => {
         'Content-Type': 'application/json', 
       }, 
       body: JSON.stringify({ 
-        from: 'NANONI Studio <noreply@nanoni.studio>', 
+        from: 'NANONI Studio <hello@nanoni.studio>', 
         to: email, 
         subject: `${code} — Your NANONI Studio verification code`, 
         html, 

@@ -1,11 +1,12 @@
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Logo } from "./Logo";
 
 const LINKS = [
   { label: "Features", href: "#features" },
   { label: "Pricing", href: "#pricing" },
   { label: "FAQ", href: "#faq" },
-  { label: "Privacy Policy", href: "#" },
-  { label: "Terms", href: "#" },
+  { label: "Privacy Policy", href: "/privacy", isPage: true },
+  { label: "Terms", href: "/terms", isPage: true },
 ];
 
 const SOCIALS = [
@@ -55,9 +56,22 @@ const SocialIcon = ({ label }: { label: string }) => {
 };
 
 export const Footer = () => {
-  const scrollTo = (href: string) => {
-    if (href.startsWith("#") && href.length > 1) {
-      document.querySelector(href)?.scrollIntoView({ behavior: "smooth" });
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const handleLinkClick = (l: { label: string; href: string; isPage?: boolean }) => {
+    if (l.isPage) {
+      navigate(l.href);
+      window.scrollTo(0, 0);
+    } else {
+      if (location.pathname !== "/") {
+        navigate("/");
+        setTimeout(() => {
+          document.querySelector(l.href)?.scrollIntoView({ behavior: "smooth" });
+        }, 100);
+      } else {
+        document.querySelector(l.href)?.scrollIntoView({ behavior: "smooth" });
+      }
     }
   };
 
@@ -77,7 +91,7 @@ export const Footer = () => {
           {LINKS.map((l) => (
             <button
               key={l.label}
-              onClick={() => scrollTo(l.href)}
+              onClick={() => handleLinkClick(l)}
               className="text-sm text-soft-gray hover:text-orange transition-colors"
             >
               {l.label}
@@ -99,7 +113,9 @@ export const Footer = () => {
               </a>
             ))}
           </div>
-          <p className="text-xs text-purple">contact@nanoni.studio</p>
+          <a href="mailto:hello@nanoni.studio" className="block text-xs text-purple hover:text-orange transition-colors">
+            hello@nanoni.studio
+          </a>
         </div>
       </div>
     </footer>

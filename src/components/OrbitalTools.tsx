@@ -46,6 +46,74 @@ export const OrbitalTools = () => {
     stripRef.current?.scrollBy({ left: dir * 260, behavior: "smooth" });
   };
 
+  useEffect(() => {
+    const strip = stripRef.current;
+    if (!strip) return;
+
+    let animationId: number;
+    let isDown = false;
+    let startX: number;
+    let scrollLeft: number;
+
+    // Auto-scroll logic
+    const step = () => {
+      if (!isDown) {
+        strip.scrollLeft += 1; // Speed of auto-scroll
+        if (strip.scrollLeft >= strip.scrollWidth - strip.clientWidth) {
+          strip.scrollLeft = 0; // Reset to beginning when reaching the end
+        }
+      }
+      animationId = requestAnimationFrame(step);
+    };
+
+    animationId = requestAnimationFrame(step);
+
+    // Pause on hover
+    const handleMouseEnter = () => cancelAnimationFrame(animationId);
+    const handleMouseLeave = () => {
+      isDown = false;
+      animationId = requestAnimationFrame(step);
+    };
+
+    // Drag to scroll logic
+    const handleMouseDown = (e: MouseEvent) => {
+      isDown = true;
+      strip.classList.add('active');
+      startX = e.pageX - strip.offsetLeft;
+      scrollLeft = strip.scrollLeft;
+      cancelAnimationFrame(animationId);
+    };
+
+    const handleMouseUp = () => {
+      isDown = false;
+      strip.classList.remove('active');
+      animationId = requestAnimationFrame(step);
+    };
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDown) return;
+      e.preventDefault();
+      const x = e.pageX - strip.offsetLeft;
+      const walk = (x - startX) * 2; // Scroll-fast
+      strip.scrollLeft = scrollLeft - walk;
+    };
+
+    strip.addEventListener('mouseenter', handleMouseEnter);
+    strip.addEventListener('mouseleave', handleMouseLeave);
+    strip.addEventListener('mousedown', handleMouseDown);
+    strip.addEventListener('mouseup', handleMouseUp);
+    strip.addEventListener('mousemove', handleMouseMove);
+
+    return () => {
+      cancelAnimationFrame(animationId);
+      strip.removeEventListener('mouseenter', handleMouseEnter);
+      strip.removeEventListener('mouseleave', handleMouseLeave);
+      strip.removeEventListener('mousedown', handleMouseDown);
+      strip.removeEventListener('mouseup', handleMouseUp);
+      strip.removeEventListener('mousemove', handleMouseMove);
+    };
+  }, []);
+
   return (
     <section id="features" className="py-32 px-6" ref={sectionRef}>
       <div className="max-w-7xl mx-auto">
@@ -140,26 +208,34 @@ export const OrbitalTools = () => {
           </button>
 
           <div ref={stripRef} className="flex gap-4 overflow-x-auto scrollbar-hide pb-4 snap-x cursor-grab active:cursor-grabbing">
-            {TOOLS.map((tool, i) => (
-              <motion.div
-                key={tool.name}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.03 }}
-                className="min-w-[220px] p-5 rounded-2xl border border-border bg-surface hover:border-orange/40 transition-all snap-start group/card hover:shadow-[0_0_20px_hsla(14,100%,50%,0.06)]"
-                style={{ perspective: "600px" }}
-              >
-                <div className="w-10 h-10 rounded-xl bg-orange/10 flex items-center justify-center mb-3">
-                  <div className="w-3 h-3 bg-orange rounded-full" />
-                </div>
-                <h3 className="font-semibold text-[15px] text-foreground mb-1">{tool.name}</h3>
-                <p className="text-[13px] text-soft-gray leading-relaxed">{tool.desc}</p>
-                <span className="inline-block mt-3 text-[11px] px-2.5 py-1 rounded-full bg-purple/10 text-purple border border-purple/20 font-medium">
-                  {tool.model}
-                </span>
-              </motion.div>
-            ))}
+            {TOOLS.map((tool, i) => {
+              const Icon = TOOL_ICON_SET[i % TOOL_ICON_SET.length];
+              return (
+                <motion.div
+                  key={tool.name}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.03 }}
+                  className="min-w-[220px] p-5 rounded-2xl border border-border bg-surface hover:border-orange/40 transition-all duration-300 snap-start group/card hover:-translate-y-1 hover:shadow-[0_8px_30px_hsla(14,100%,50%,0.12)] cursor-pointer"
+                  style={{ perspective: "600px" }}
+                >
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange/10 to-purple/10 border border-white/5 flex items-center justify-center mb-4 group-hover/card:scale-110 group-hover/card:border-orange/30 group-hover/card:bg-orange/20 transition-all duration-300">
+                    <Icon className="w-5 h-5 text-soft-gray group-hover/card:text-orange transition-colors duration-300" strokeWidth={1.5} />
+                  </div>
+                  <h3 className="font-semibold text-[16px] text-foreground mb-1.5 group-hover/card:text-orange transition-colors">{tool.name}</h3>
+                  <p className="text-[13px] text-soft-gray leading-relaxed">{tool.desc}</p>
+                  <div className="mt-4 flex items-center justify-between">
+                    <span className="inline-block text-[11px] px-2.5 py-1 rounded-full bg-purple/10 text-purple border border-purple/20 font-medium">
+                      {tool.model}
+                    </span>
+                    <div className="w-6 h-6 rounded-full bg-white/5 flex items-center justify-center opacity-0 -translate-x-2 group-hover/card:opacity-100 group-hover/card:translate-x-0 transition-all duration-300">
+                      <ChevronRight className="w-3.5 h-3.5 text-orange" />
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })}
           </div>
         </div>
       </div>
