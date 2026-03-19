@@ -13,7 +13,6 @@ export const LoadingScreen = ({ isLoading }: LoadingScreenProps) => (
         exit={{ y: "-100%" }}
         transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
       >
-        {/* Glow bloom */}
         <motion.div
           className="absolute w-64 h-64 rounded-full"
           initial={{ opacity: 0, scale: 0.5 }}
@@ -24,11 +23,19 @@ export const LoadingScreen = ({ isLoading }: LoadingScreenProps) => (
           }}
         />
         <motion.div
+          layoutId="nanoni-logo-handoff-shell"
           initial={{ opacity: 0, scale: 0.5 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.6, ease: "easeOut" }}
+          transition={{ duration: 0.65, ease: [0.2, 0.8, 0.2, 1] }}
+          className="relative p-7 rounded-full bg-background border border-[hsla(0,0%,100%,0.1)] shadow-[0_0_60px_hsla(14,100%,50%,0.15)]"
         >
-          <Logo className="w-20 h-20" glow />
+          <motion.div
+            layoutId="nanoni-logo-handoff-glow"
+            className="absolute inset-0 blur-3xl rounded-full bg-orange/20 scale-150"
+          />
+          <motion.div layoutId="nanoni-logo-handoff-mark" className="relative z-10">
+            <Logo className="w-20 h-20" glow />
+          </motion.div>
         </motion.div>
         <motion.p
           initial={{ opacity: 0, y: 10 }}

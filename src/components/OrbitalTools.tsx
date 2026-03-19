@@ -1,16 +1,46 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence, useInView } from "framer-motion";
 import { Logo } from "./Logo";
 import { TOOLS } from "@/lib/tools";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Sparkles, Camera, Wand2, Palette, Scissors, ImagePlus, ScanSearch, Eraser, Clapperboard, Workflow, Layers3, Brush, Aperture } from "lucide-react";
+
+const TOOL_ICON_SET = [Sparkles, Camera, Wand2, Palette, Scissors, ImagePlus, ScanSearch, Eraser, Clapperboard, Workflow, Layers3, Brush, Aperture];
 
 export const OrbitalTools = () => {
   const [hovered, setHovered] = useState<number | null>(null);
+  const [autoHovered, setAutoHovered] = useState<number | null>(null);
+  const [isUserInteracting, setIsUserInteracting] = useState(false);
   const inner = TOOLS.filter((t) => t.ring === "inner");
   const outer = TOOLS.filter((t) => t.ring === "outer");
   const stripRef = useRef<HTMLDivElement>(null);
   const sectionRef = useRef(null);
   const inView = useInView(sectionRef, { once: true, margin: "-100px" });
+  const activeHover = hovered ?? autoHovered;
+
+  useEffect(() => {
+    if (hovered !== null) {
+      setAutoHovered(null);
+      setIsUserInteracting(true);
+      return;
+    }
+
+    const idleTimer = window.setTimeout(() => setIsUserInteracting(false), 3000);
+    return () => window.clearTimeout(idleTimer);
+  }, [hovered]);
+
+  useEffect(() => {
+    if (isUserInteracting) {
+      return;
+    }
+
+    const interval = window.setInterval(() => {
+      const randomIndex = Math.floor(Math.random() * TOOLS.length);
+      setAutoHovered(randomIndex);
+      window.setTimeout(() => setAutoHovered(null), 3000);
+    }, 5000);
+
+    return () => window.clearInterval(interval);
+  }, [isUserInteracting]);
 
   const scroll = (dir: number) => {
     stripRef.current?.scrollBy({ left: dir * 260, behavior: "smooth" });
@@ -59,14 +89,14 @@ export const OrbitalTools = () => {
             <div
               className="absolute inset-[22%] border border-dashed border-[hsla(0,0%,100%,0.06)] rounded-full"
               style={{
-                animation: hovered !== null && TOOLS[hovered]?.ring === 'inner' ? 'none' : 'orbit 20s linear infinite',
+                animation: activeHover !== null ? "none" : "orbit 20s linear infinite",
               }}
             >
               {inner.map((tool, i) => {
                 const globalIdx = TOOLS.indexOf(tool);
                 const angle = (i / inner.length) * 360;
                 return (
-                  <ToolNode key={tool.name} tool={tool} angle={angle} index={globalIdx} hovered={hovered} onHover={setHovered} ringRadius="50%" ring="inner" />
+                  <ToolNode key={tool.name} tool={tool} angle={angle} index={globalIdx} hovered={activeHover} onHover={setHovered} ringRadius="50%" ring="inner" />
                 );
               })}
             </div>
@@ -75,14 +105,14 @@ export const OrbitalTools = () => {
             <div
               className="absolute inset-0 border border-dashed border-[hsla(245,100%,71%,0.06)] rounded-full"
               style={{
-                animation: hovered !== null && TOOLS[hovered]?.ring === 'outer' ? 'none' : 'orbit 35s linear infinite reverse',
+                animation: activeHover !== null ? "none" : "orbit 35s linear infinite reverse",
               }}
             >
               {outer.map((tool, i) => {
                 const globalIdx = TOOLS.indexOf(tool);
                 const angle = (i / outer.length) * 360;
                 return (
-                  <ToolNode key={tool.name} tool={tool} angle={angle} index={globalIdx} hovered={hovered} onHover={setHovered} ringRadius="50%" ring="outer" />
+                  <ToolNode key={tool.name} tool={tool} angle={angle} index={globalIdx} hovered={activeHover} onHover={setHovered} ringRadius="50%" ring="outer" />
                 );
               })}
             </div>
@@ -150,6 +180,7 @@ interface ToolNodeProps {
 const ToolNode = ({ tool, angle, index, hovered, onHover, ring }: ToolNodeProps) => {
   const isHovered = hovered === index;
   const translateDist = ring === "inner" ? "min(120px, 30vw)" : "min(180px, 42vw)";
+  const Icon = TOOL_ICON_SET[index % TOOL_ICON_SET.length];
 
   return (
     <div
@@ -159,9 +190,15 @@ const ToolNode = ({ tool, angle, index, hovered, onHover, ring }: ToolNodeProps)
       onMouseLeave={() => onHover(null)}
     >
       <div className={`w-full h-full rounded-full border flex items-center justify-center transition-all duration-200 ${
-        isHovered ? "border-orange bg-orange/15 scale-[1.4]" : "border-[hsla(0,0%,100%,0.1)] bg-[hsla(0,0%,100%,0.05)]"
+        isHovered
+          ? "border-orange scale-[1.28] shadow-[0_0_24px_hsla(14,100%,50%,0.3)]"
+          : "border-[hsla(0,0%,100%,0.1)] bg-[linear-gradient(135deg,hsla(14,100%,50%,0.14),hsla(245,100%,71%,0.14),hsla(14,100%,50%,0.14))]"
       }`}>
-        <div className={`w-2 h-2 rounded-full transition-colors ${isHovered ? "bg-orange" : "bg-soft-gray/40"}`} />
+        <div
+          className={`w-full h-full rounded-full flex items-center justify-center ${isHovered ? "bg-[linear-gradient(135deg,hsla(14,100%,50%,0.25),hsla(245,100%,71%,0.25))]" : "bg-[length:200%_200%] animate-[shimmer_4s_ease_infinite]"}`}
+        >
+          <Icon className={`w-4 h-4 sm:w-[18px] sm:h-[18px] transition-colors ${isHovered ? "text-orange" : "text-soft-gray"}`} strokeWidth={2} />
+        </div>
       </div>
       <AnimatePresence>
         {isHovered && (

@@ -1,34 +1,72 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { TOOLS } from "@/lib/tools";
+import { supabase } from "@/lib/supabase";
+import { submitWaitlist } from "@/lib/waitlist";
+import { VerificationModal } from "@/components/VerificationModal";
 
 type Status = "idle" | "loading" | "success";
 
 export default function Waitlist() {
   const [status, setStatus] = useState<Status>("idle");
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submitError, setSubmitError] = useState("");
   const [form, setForm] = useState({ name: "", email: "", role: "", source: "" });
+  const [count, setCount] = useState<number | null>(null);
+  const [showVerification, setShowVerification] = useState(false);
+
+  useEffect(() => {
+    const fetchCount = async () => {
+      try {
+        const { count: currentCount } = await supabase
+          .from("waitlist_submissions")
+          .select("*", { count: "exact", head: true });
+        setCount(currentCount || 0);
+      } catch (err) {
+        console.error("Count error:", err);
+      }
+    };
+    fetchCount();
+  }, []);
 
   const validate = () => {
     const e: Record<string, string> = {};
-    if (!form.name.trim()) e.name = "Name is required";
-    if (!form.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = "Valid email required";
-    if (!form.role) e.role = "Please select a role";
-    if (!form.source) e.source = "Please select an option";
+    if (!form.name.trim() || form.name.length < 2) e.name = "Please enter your full name";
+    if (!form.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = "Please enter a valid email address";
+    if (!form.role) e.role = "Please select your role";
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitError("");
+    
     if (!validate()) return;
     setStatus("loading");
-    console.log("Waitlist submission (UI only):", form);
-    setTimeout(() => setStatus("success"), 1500);
+    
+    try {
+      await submitWaitlist({
+        name: form.name,
+        email: form.email,
+        role: form.role,
+        source: form.source || ""
+      });
+      setShowVerification(true);
+      setStatus("idle");
+    } catch (err: any) {
+      console.error("Waitlist error:", err);
+      if (err.message === 'This email is already on the waitlist!') {
+        setErrors({ ...errors, email: err.message });
+      } else {
+        setSubmitError(err.message || "Something went wrong. Please try again.");
+      }
+      setStatus("idle");
+    }
   };
 
   const inputClass = (field: string) =>
@@ -39,6 +77,19 @@ export default function Waitlist() {
       <Navbar />
       <main className="pt-32 pb-24 px-6">
         <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-20 items-center min-h-[70vh]">
+          {showVerification && (
+            <VerificationModal 
+              email={form.email} 
+              onClose={() => {
+                setShowVerification(false);
+              }} 
+              onVerified={() => {
+                setShowVerification(false);
+                setStatus("success");
+                if (count !== null) setCount(count + 1);
+              }}
+            />
+          )}
           {/* Left — Form */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
             <AnimatePresence mode="wait">
@@ -88,12 +139,18 @@ export default function Waitlist() {
 
                   {/* Social proof */}
                   <div className="flex items-center gap-3">
-                    <div className="flex -space-x-2">
-                      {["bg-orange", "bg-purple", "bg-soft-gray", "bg-orange/60", "bg-purple/60"].map((bg, i) => (
-                        <div key={i} className={`w-6 h-6 rounded-full ${bg} border-2 border-background`} />
-                      ))}
-                    </div>
-                    <span className="text-soft-gray text-sm">Join 247+ creators already on the list</span>
+                    {count !== null && count > 0 ? (
+                      <>
+                        <div className="flex -space-x-2">
+                          {["bg-orange", "bg-purple", "bg-soft-gray", "bg-orange/60", "bg-purple/60"].map((bg, i) => (
+                            <div key={i} className={`w-6 h-6 rounded-full ${bg} border-2 border-background`} />
+                          ))}
+                        </div>
+                        <span className="text-soft-gray text-sm">Join {count}+ creators already on the list</span>
+                      </>
+                    ) : (
+                      <span className="text-orange font-medium text-sm">Be the first to join!</span>
+                    )}
                   </div>
 
                   <form onSubmit={handleSubmit} className="space-y-4 max-w-md">
@@ -152,6 +209,9 @@ export default function Waitlist() {
                       {status === "loading" && <Loader2 className="w-4 h-4 animate-spin" />}
                       {status === "loading" ? "Joining..." : "Join the Waitlist →"}
                     </motion.button>
+                    {submitError && (
+                      <p className="text-sm text-destructive text-center mt-2">{submitError}</p>
+                    )}
                   </form>
                 </motion.div>
               )}
@@ -185,15 +245,17 @@ export default function Waitlist() {
             </div>
 
             {/* Counter badge */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.8 }}
-              className="absolute bottom-8 right-8 glass rounded-2xl p-6"
-            >
-              <p className="text-4xl font-black text-orange">247<span className="text-purple">+</span></p>
-              <p className="text-xs uppercase tracking-[0.15em] text-soft-gray mt-1">Creators Waiting</p>
-            </motion.div>
+            {count !== null && count > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.8 }}
+                className="absolute bottom-8 right-8 glass rounded-2xl p-6"
+              >
+                <p className="text-4xl font-black text-orange">{count}<span className="text-purple">+</span></p>
+                <p className="text-xs uppercase tracking-[0.15em] text-soft-gray mt-1">Creators Waiting</p>
+              </motion.div>
+            )}
           </div>
         </div>
       </main>

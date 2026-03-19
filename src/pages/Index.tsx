@@ -2,12 +2,10 @@ import { useState, useEffect } from "react";
 import { Navbar } from "@/components/Navbar";
 import { Hero } from "@/components/Hero";
 import { StatsBar } from "@/components/StatsBar";
-import { MarqueeStrip } from "@/components/MarqueeStrip";
 import { OrbitalTools } from "@/components/OrbitalTools";
 import { Pricing } from "@/components/Pricing";
 import { FAQ } from "@/components/FAQ";
 import { Footer } from "@/components/Footer";
-import { SidebarNav } from "@/components/SidebarNav";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { SpotlightEffect } from "@/components/SpotlightEffect";
 import { ParticlesCanvas } from "@/components/ParticlesCanvas";
@@ -38,11 +36,9 @@ export default function Index() {
       <div className="fixed inset-0 dot-grid pointer-events-none z-0" aria-hidden="true" />
       <CookiesBanner />
       <Navbar />
-      <SidebarNav />
-      <main className="relative z-10">
+      <main className="relative z-10 w-full overflow-hidden">
         <Hero />
         <StatsBar />
-        <MarqueeStrip />
         <OrbitalTools />
         <Pricing />
         <FAQ />

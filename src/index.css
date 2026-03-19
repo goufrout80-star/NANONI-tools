@@ -72,6 +72,15 @@
     --card-bg: 0 0% 0% / 0.03;
     --glass-bg: 0 0% 100% / 0.6;
     --glass-border: 0 0% 0% / 0.1;
+
+    --sidebar-background: 30 24% 94%;
+    --sidebar-foreground: 240 7% 5%;
+    --sidebar-primary: 14 100% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 30 10% 88%;
+    --sidebar-accent-foreground: 240 7% 5%;
+    --sidebar-border: 0 0% 0% / 0.08;
+    --sidebar-ring: 14 100% 50%;
   }
 }
 

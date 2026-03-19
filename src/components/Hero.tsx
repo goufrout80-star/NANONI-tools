@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Logo } from "./Logo";
 import { TOOLS } from "@/lib/tools";
+import { supabase } from "@/lib/supabase";
 
 const CYCLE_WORDS = ["Face Swap", "Brand DNA", "PostFlow", "Ad Packs", "Relighting", "Style Fusion"];
 
@@ -18,6 +19,21 @@ export const Hero = () => {
   const [cycleIdx, setCycleIdx] = useState(0);
   const [displayText, setDisplayText] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
+  const [count, setCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    const fetchCount = async () => {
+      try {
+        const { count: currentCount } = await supabase
+          .from("waitlist_submissions")
+          .select("*", { count: "exact", head: true });
+        setCount(currentCount || 0);
+      } catch (err) {
+        console.error("Count error:", err);
+      }
+    };
+    fetchCount();
+  }, []);
 
   useEffect(() => {
     const word = CYCLE_WORDS[cycleIdx];
@@ -128,12 +144,18 @@ export const Hero = () => {
             transition={{ delay: 1.8 }}
             className="flex items-center gap-3 pt-2"
           >
-            <div className="flex -space-x-2">
-              {["bg-orange", "bg-purple", "bg-soft-gray", "bg-orange/60", "bg-purple/60"].map((bg, i) => (
-                <div key={i} className={`w-7 h-7 rounded-full ${bg} border-2 border-background`} />
-              ))}
-            </div>
-            <span className="text-soft-gray text-sm">247+ creators already on the waitlist</span>
+            {count !== null && count > 0 ? (
+              <>
+                <div className="flex -space-x-2">
+                  {["bg-orange", "bg-purple", "bg-soft-gray", "bg-orange/60", "bg-purple/60"].map((bg, i) => (
+                    <div key={i} className={`w-7 h-7 rounded-full ${bg} border-2 border-background`} />
+                  ))}
+                </div>
+                <span className="text-soft-gray text-sm">{count}+ creators already on the waitlist</span>
+              </>
+            ) : (
+              <span className="text-orange font-medium text-sm">Be the first to join the waitlist!</span>
+            )}
           </motion.div>
         </div>
 
@@ -141,22 +163,47 @@ export const Hero = () => {
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.6, duration: 0.8 }}
+          transition={{ delay: 0.2, duration: 0.8 }}
           className="hidden lg:flex items-center justify-center"
           style={{ animation: "float 6s ease-in-out infinite" }}
         >
           <div className="relative w-[340px] h-[340px]">
-            {/* Center logo */}
             <div className="absolute inset-0 flex items-center justify-center z-10">
-              <div className="relative">
-                <div className="absolute inset-0 blur-3xl rounded-full bg-orange/20 scale-150" />
-                <div className="p-7 rounded-full bg-background border border-[hsla(0,0%,100%,0.1)] shadow-[0_0_60px_hsla(14,100%,50%,0.15)] relative">
+              <motion.div
+                layoutId="nanoni-logo-handoff-shell"
+                transition={{ type: "spring", stiffness: 220, damping: 24, mass: 0.9 }}
+                className="relative p-7 rounded-full bg-background border border-[hsla(0,0%,100%,0.1)] shadow-[0_0_60px_hsla(14,100%,50%,0.15)]"
+                animate={{ y: [0, -7, 0], scale: [1, 1.02, 1] }}
+                style={{ willChange: "transform" }}
+              >
+                <motion.div
+                  layoutId="nanoni-logo-handoff-glow"
+                  className="absolute inset-0 blur-3xl rounded-full bg-orange/20 scale-150"
+                  animate={{ opacity: [0.35, 0.65, 0.35] }}
+                  transition={{ duration: 3.8, repeat: Infinity, ease: "easeInOut" }}
+                />
+                <motion.div
+                  className="absolute inset-[-24px] rounded-full border border-orange/20"
+                  animate={{ scale: [0.8, 1.45], opacity: [0, 0.6, 0] }}
+                  transition={{ duration: 2.8, repeat: Infinity, ease: "easeOut" }}
+                />
+                <motion.div
+                  className="absolute inset-[-40px] rounded-full border border-purple/20"
+                  animate={{ scale: [0.7, 1.55], opacity: [0, 0.45, 0] }}
+                  transition={{ duration: 3.2, repeat: Infinity, ease: "easeOut", delay: 0.8 }}
+                />
+                <motion.div
+                  className="absolute inset-[-12px] rounded-full"
+                  style={{ background: "conic-gradient(from 0deg, hsla(14,100%,50%,0.45), hsla(245,100%,71%,0.45), hsla(14,100%,50%,0.45))", filter: "blur(10px)" }}
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+                />
+                <motion.div layoutId="nanoni-logo-handoff-mark" className="relative z-10">
                   <Logo className="w-16 h-16" glow />
-                </div>
-              </div>
+                </motion.div>
+              </motion.div>
             </div>
 
-            {/* Inner ring */}
             <div
               className="absolute inset-[18%] border border-dashed border-[hsla(0,0%,100%,0.08)] rounded-full animate-orbit-fast"
             >
@@ -168,15 +215,30 @@ export const Hero = () => {
                     className="absolute w-8 h-8 top-1/2 left-1/2 -ml-4 -mt-4"
                     style={{ transform: `rotate(${angle}deg) translateX(85px) rotate(-${angle}deg)` }}
                   >
-                    <div className="w-full h-full rounded-full bg-[hsla(0,0%,100%,0.05)] border border-[hsla(0,0%,100%,0.1)] flex items-center justify-center">
-                      <div className="w-2 h-2 rounded-full bg-orange/60" />
-                    </div>
+                    <motion.div
+                      className="w-full h-full rounded-full bg-[hsla(0,0%,100%,0.05)] border border-[hsla(0,0%,100%,0.1)] flex items-center justify-center"
+                      animate={{
+                        scale: [1, 1.14, 1],
+                        borderColor: ["hsla(0,0%,100%,0.1)", "hsla(14,100%,50%,0.45)", "hsla(0,0%,100%,0.1)"],
+                        boxShadow: [
+                          "0 0 0 hsla(14,100%,50%,0)",
+                          "0 0 14px hsla(14,100%,50%,0.32)",
+                          "0 0 0 hsla(14,100%,50%,0)"
+                        ],
+                      }}
+                      transition={{ duration: 2.6, repeat: Infinity, ease: "easeInOut", delay: i * 0.12 }}
+                    >
+                      <motion.div
+                        className="w-2 h-2 rounded-full bg-orange/60"
+                        animate={{ scale: [1, 1.25, 1], opacity: [0.55, 1, 0.55] }}
+                        transition={{ duration: 1.9, repeat: Infinity, ease: "easeInOut", delay: i * 0.12 }}
+                      />
+                    </motion.div>
                   </div>
                 );
               })}
             </div>
 
-            {/* Outer ring */}
             <div
               className="absolute inset-0 border border-dashed border-[hsla(245,100%,71%,0.08)] rounded-full animate-orbit-slow"
               style={{ animationDirection: "reverse" }}
@@ -189,15 +251,30 @@ export const Hero = () => {
                     className="absolute w-7 h-7 top-1/2 left-1/2 -ml-3.5 -mt-3.5"
                     style={{ transform: `rotate(${angle}deg) translateX(165px) rotate(-${angle}deg)` }}
                   >
-                    <div className="w-full h-full rounded-full bg-[hsla(0,0%,100%,0.04)] border border-[hsla(245,100%,71%,0.12)] flex items-center justify-center">
-                      <div className="w-1.5 h-1.5 rounded-full bg-purple/50" />
-                    </div>
+                    <motion.div
+                      className="w-full h-full rounded-full bg-[hsla(0,0%,100%,0.04)] border border-[hsla(245,100%,71%,0.12)] flex items-center justify-center"
+                      animate={{
+                        scale: [1, 1.16, 1],
+                        borderColor: ["hsla(245,100%,71%,0.12)", "hsla(245,100%,71%,0.45)", "hsla(245,100%,71%,0.12)"],
+                        boxShadow: [
+                          "0 0 0 hsla(245,100%,71%,0)",
+                          "0 0 12px hsla(245,100%,71%,0.3)",
+                          "0 0 0 hsla(245,100%,71%,0)"
+                        ],
+                      }}
+                      transition={{ duration: 2.9, repeat: Infinity, ease: "easeInOut", delay: i * 0.14 }}
+                    >
+                      <motion.div
+                        className="w-1.5 h-1.5 rounded-full bg-purple/50"
+                        animate={{ scale: [1, 1.25, 1], opacity: [0.45, 1, 0.45] }}
+                        transition={{ duration: 2.1, repeat: Infinity, ease: "easeInOut", delay: i * 0.14 }}
+                      />
+                    </motion.div>
                   </div>
                 );
               })}
             </div>
 
-            {/* Purple glow on outer edge */}
             <div className="absolute inset-0 rounded-full" style={{ boxShadow: "inset 0 0 40px hsla(245,100%,71%,0.05)" }} />
           </div>
         </motion.div>
