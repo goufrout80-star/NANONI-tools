@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"> 
+  <rect width="32" height="32" rx="8" fill="#0B0B0F"/> 
+  <!-- N lettermark in orange --> 
+  <path d="M6 6 L6 26 L10 26 L10 13 L22 26 L26 26 L26 6 L22 6 L22 19 L10 6 Z" fill="#FF3D00"/> 
+</svg> 

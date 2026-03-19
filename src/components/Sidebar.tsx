@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { ChevronLeft, ChevronRight, Sun, Moon } from "lucide-react";
+import { ChevronLeft, ChevronRight, Sun, Moon, LogIn } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useSidebar } from "@/hooks/useSidebar";
 
@@ -56,8 +56,20 @@ export function Sidebar() {
             />
           </Link>
         </div>
-        <div className="flex-1" />
-        <div className="px-2 pb-3">
+        
+        <div className="flex-1 flex flex-col gap-2 px-2 pt-4">
+          {/* Navigation Items */}
+        </div>
+
+        <div className="px-2 pb-3 flex flex-col gap-2">
+          <Link
+            to="/login"
+            className="w-full h-10 rounded-lg border border-sidebar-border bg-sidebar-accent/40 text-sidebar-foreground/80 hover:text-orange hover:border-orange/50 transition-colors flex items-center justify-center gap-2"
+            aria-label="Login"
+          >
+            <LogIn className="w-4 h-4" />
+            {isMobile && isExpanded && <span className="text-[12px] font-medium">Login</span>}
+          </Link>
           <button
             type="button"
             onClick={() => setLight((v) => !v)}

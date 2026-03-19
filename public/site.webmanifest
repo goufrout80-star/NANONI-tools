@@ -1,0 +1,21 @@
+{ 
+  "name": "NANONI Studio", 
+  "short_name": "NANONI", 
+  "description": "19 AI-powered creative tools in one platform.", 
+  "start_url": "/", 
+  "display": "standalone", 
+  "background_color": "#0B0B0F", 
+  "theme_color": "#FF3D00", 
+  "icons": [ 
+    { 
+      "src": "/favicon-32x32.png", 
+      "sizes": "32x32", 
+      "type": "image/png" 
+    }, 
+    { 
+      "src": "/apple-touch-icon.png", 
+      "sizes": "180x180", 
+      "type": "image/png" 
+    } 
+  ] 
+}
