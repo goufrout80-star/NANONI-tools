@@ -75,7 +75,7 @@ export const Hero = () => {
               backgroundSize: "200% auto",
             }}
           >
-            <span className="text-purple">✦</span>
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor" className="text-purple" aria-hidden="true"><path d="M5 0L6.2 3.8L10 5L6.2 6.2L5 10L3.8 6.2L0 5L3.8 3.8Z"/></svg>
             AI Creative Platform
           </motion.div>
 

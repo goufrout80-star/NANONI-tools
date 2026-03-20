@@ -10,10 +10,10 @@ const LINKS = [
 ];
 
 const SOCIALS = [
-  { label: "Instagram", href: "#" },
-  { label: "LinkedIn", href: "#" },
-  { label: "X", href: "#" },
-  { label: "TikTok", href: "#" },
+  { label: "Instagram", href: "https://instagram.com/nanonistudio" },
+  { label: "LinkedIn", href: "https://linkedin.com/company/nanonistudio" },
+  { label: "X", href: "https://twitter.com/nanonistudio" },
+  { label: "TikTok", href: "https://tiktok.com/@nanonistudio" },
   { label: "Discord", href: "#" },
 ];
 
@@ -113,8 +113,8 @@ export const Footer = () => {
               </a>
             ))}
           </div>
-          <a href="mailto:hello@nanoni.studio" className="block text-xs text-purple hover:text-orange transition-colors">
-            hello@nanoni.studio
+          <a href="mailto:contact@nanoni.studio" className="block text-xs text-purple hover:text-orange transition-colors">
+            contact@nanoni.studio
           </a>
         </div>
       </div>

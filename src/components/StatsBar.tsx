@@ -1,5 +1,5 @@
 import { motion, useInView } from "framer-motion";
-import { useRef, useState, useEffect, useMemo } from "react";
+import { useRef, useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 
 const Counter = ({ target, inView }: { target: number; inView: boolean }) => {
@@ -19,10 +19,37 @@ const Counter = ({ target, inView }: { target: number; inView: boolean }) => {
   return <span>{count}</span>;
 };
 
+const STATS = [
+  {
+    value: 19,
+    suffix: "",
+    label: "TOOLS",
+    numberStyle: { color: "#FF3D00" },
+  },
+  {
+    value: 1,
+    suffix: "",
+    label: "PLATFORM",
+    numberStyle: { color: "#FF3D00" },
+  },
+  {
+    value: null,
+    text: "Gemini",
+    label: "POWERED BY",
+    numberStyle: { color: "#7A6FFF" },
+  },
+  {
+    value: null,
+    text: "Creators",
+    label: "BUILT FOR",
+    numberStyle: { color: "#F5F0EB" },
+  },
+];
+
 export const StatsBar = () => {
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: "-100px" });
-  const [waitlistCount, setWaitlistCount] = useState<number>(247); // Fallback until fetched
+  const [waitlistCount, setWaitlistCount] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchCount = async () => {
@@ -30,44 +57,93 @@ export const StatsBar = () => {
         const { count: currentCount } = await supabase
           .from("waitlist_submissions")
           .select("*", { count: "exact", head: true });
-        if (currentCount !== null && currentCount > 0) {
-          setWaitlistCount(currentCount);
-        }
-      } catch (err) {
-        console.error("Count error:", err);
+        if (currentCount !== null) setWaitlistCount(currentCount);
+      } catch {
+        // silent
       }
     };
     fetchCount();
   }, []);
-
-  const stats = useMemo(() => [
-    { value: 19, label: "TOOLS", color: "text-orange" },
-    { value: 1, label: "PLATFORM", color: "text-purple" },
-    { value: 24, label: "ACTIVE WORKFLOWS", color: "text-orange" },
-    { value: waitlistCount, label: "CREATORS", color: "text-purple" },
-  ], [waitlistCount]);
 
   return (
     <motion.div
       ref={ref}
       initial={{ opacity: 0 }}
       animate={inView ? { opacity: 1 } : {}}
-      className="border-y border-border py-16 px-6"
-      style={{ background: "linear-gradient(90deg, hsla(14,100%,50%,0.06), hsla(245,100%,71%,0.06), hsla(14,100%,50%,0.06))", backgroundSize: "200% 100%", animation: "shimmer 10s linear infinite" }}
+      style={{
+        width: "100%",
+        background: "rgba(255,255,255,0.02)",
+        borderTop: "1px solid rgba(255,255,255,0.06)",
+        borderBottom: "1px solid rgba(255,255,255,0.06)",
+        padding: "32px 0",
+        boxSizing: "border-box",
+      }}
     >
-      <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-        {stats.map((s, i) => (
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(2, 1fr)",
+          maxWidth: "1024px",
+          margin: "0 auto",
+          padding: "0 24px",
+        }}
+        className="md:grid-cols-4"
+      >
+        {STATS.map((s, i) => (
           <motion.div
             key={i}
             initial={{ opacity: 0, y: 20 }}
             animate={inView ? { opacity: 1, y: 0 } : {}}
             transition={{ delay: i * 0.1 }}
-            className={i < stats.length - 1 ? "md:border-r md:border-border" : ""}
+            style={{
+              textAlign: "center",
+              padding: "16px 24px",
+              borderRight: i < STATS.length - 1 ? "1px solid rgba(255,255,255,0.06)" : "none",
+              position: "relative",
+            }}
           >
-            <p className={`text-5xl font-black ${s.color}`}>
-              <Counter target={s.value} inView={inView} />
+            {/* Vertical divider on mobile: remove right border for 2nd item */}
+            <p
+              style={{
+                fontSize: "40px",
+                fontWeight: 900,
+                lineHeight: 1,
+                marginBottom: "8px",
+                fontFamily: "Inter, sans-serif",
+                ...s.numberStyle,
+              }}
+            >
+              {s.value !== null ? (
+                <>
+                  <Counter target={s.value} inView={inView} />
+                </>
+              ) : s.label === "POWERED BY" ? (
+                "Gemini"
+              ) : s.label === "BUILT FOR" ? (
+                "Creators"
+              ) : (
+                s.text
+              )}
+              {s.label === "TOOLS" || s.label === "PLATFORM" ? (
+                <span style={{ fontSize: "22px", fontWeight: 700, marginLeft: "2px" }}>
+                  {s.label === "TOOLS" ? "" : ""}
+                </span>
+              ) : null}
+              {s.label === "CREATORS" && waitlistCount !== null && (
+                <span style={{ fontSize: "22px", color: "#7A6FFF" }}>+</span>
+              )}
             </p>
-            <p className="text-xs uppercase tracking-[0.2em] text-soft-gray mt-2">{s.label}</p>
+            <p
+              style={{
+                fontSize: "11px",
+                textTransform: "uppercase",
+                letterSpacing: "2px",
+                color: "#A0A0A0",
+                fontFamily: "inherit",
+              }}
+            >
+              {s.label}
+            </p>
           </motion.div>
         ))}
       </div>

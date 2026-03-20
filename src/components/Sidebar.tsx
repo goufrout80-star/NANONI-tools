@@ -28,7 +28,7 @@ export function Sidebar() {
     localStorage.setItem("nanoni-theme", light ? "light" : "dark");
   }, [light]);
 
-  const sidebarWidth = isMobile ? (isExpanded ? 220 : 0) : (isExpanded ? 88 : 0);
+  const sidebarWidth = isMobile ? (isExpanded ? 220 : 0) : (isExpanded ? 240 : 56);
 
   return (
     <>

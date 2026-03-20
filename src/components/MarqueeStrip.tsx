@@ -15,7 +15,7 @@ const Row = ({ reverse = false }: { reverse?: boolean }) => {
       >
         {doubled.map((item, i) => (
           <span key={i} className={`mx-5 text-base font-medium tracking-wide ${i % 2 === 0 ? "text-orange" : "text-purple"}`}>
-            {item} <span className="text-soft-gray/30 mx-2">✦</span>
+            {item} <svg width="5" height="5" viewBox="0 0 5 5" fill="currentColor" className="inline mx-2 text-soft-gray/30" aria-hidden="true"><circle cx="2.5" cy="2.5" r="2"/></svg>
           </span>
         ))}
       </div>

@@ -87,8 +87,7 @@ export function VerificationModal({ email, onClose, onVerified }: Props) {
       setAttempts(0); 
       setCode(""); 
       setError(null); 
-      // You could use a toast here if you have one setup 
-      alert("New code sent!"); 
+      setError(null); 
     } catch (err: any) { 
       setError(err.message || "Failed to resend code"); 
     } 
@@ -109,7 +108,7 @@ export function VerificationModal({ email, onClose, onVerified }: Props) {
             </svg> 
           </div> 
           <h2 className="text-3xl font-bold mb-3 text-[#F5F0EB]">Verified!</h2> 
-          <p className="text-[#A0A0A0] mb-8">You're on the list. We'll notify you at launch. 🎉</p> 
+          <p className="text-[#A0A0A0] mb-8">You're on the list. We'll notify you at launch.</p> 
           <button  
             onClick={onVerified} 
             className="w-full py-3 bg-[#FF3D00] text-white font-bold rounded-xl" 
@@ -130,7 +129,9 @@ export function VerificationModal({ email, onClose, onVerified }: Props) {
         animate={{ opacity: 1, scale: 1 }} 
         className="bg-[#111116] border border-[hsla(0,0%,100%,0.06)] p-8 rounded-2xl max-w-md w-full relative" 
       > 
-        <button onClick={onClose} className="absolute top-4 right-4 text-[#A0A0A0] hover:text-white">✕</button> 
+        <button onClick={onClose} className="absolute top-4 right-4 text-[#A0A0A0] hover:text-white" aria-label="Close">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 3L13 13M13 3L3 13" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>
+        </button> 
          
         <h2 className="text-2xl font-bold mb-2 text-[#F5F0EB]">Check your email</h2> 
         <p className="text-[#A0A0A0] mb-6 text-sm"> 
