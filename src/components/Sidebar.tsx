@@ -86,7 +86,7 @@ export function Sidebar() {
           type="button"
           onClick={toggle}
           initial={false}
-          animate={{ left: isExpanded ? 76 : 8, x: isExpanded ? 0 : [0, 4, -2, 5, 0] }}
+          animate={{ left: isExpanded ? 224 : 40, x: isExpanded ? 0 : [0, 4, -2, 5, 0] }}
           transition={{
             left: { duration: 0.3, ease: [0.4, 0, 0.2, 1] },
             x: isExpanded ? { duration: 0.2 } : { duration: 0.8, repeat: Infinity, repeatDelay: 10, ease: "easeInOut" }
