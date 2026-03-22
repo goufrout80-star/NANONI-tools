@@ -44,6 +44,19 @@ export default function Login() {
     }
   }, [step, navigate]);
 
+  // Auto-redirect on not_found after 5s
+  const [notFoundCountdown, setNotFoundCountdown] = useState(5);
+  useEffect(() => {
+    if (step !== "not_found") { setNotFoundCountdown(5); return; }
+    const timer = setInterval(() => {
+      setNotFoundCountdown((c) => {
+        if (c <= 1) { navigate("/waitlist"); return 0; }
+        return c - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [step, navigate]);
+
   // ═══ EMAIL SUBMIT → trigger captcha ═══
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -187,6 +200,13 @@ export default function Login() {
           <div className="mb-10 text-center">
             <div className="flex justify-center mb-6">
               <div className="relative">
+                {/* Orbiting glow */}
+                <div className="absolute inset-0 flex items-center justify-center" style={{ animation: 'orbit-glow 6s linear infinite' }}>
+                  <div className="w-5 h-5 rounded-full bg-orange/40 blur-[12px]" />
+                </div>
+                <div className="absolute inset-0 flex items-center justify-center" style={{ animation: 'orbit-glow 8s linear infinite reverse' }}>
+                  <div className="w-4 h-4 rounded-full bg-purple/30 blur-[10px]" />
+                </div>
                 <div className="absolute inset-0 blur-[40px] rounded-full bg-orange/20 scale-[2]" />
                 <div className="p-5 rounded-2xl bg-background border border-[hsla(0,0%,100%,0.08)] relative shadow-xl">
                   <Logo className="w-10 h-10" glow />
@@ -197,9 +217,19 @@ export default function Login() {
             <p className="text-soft-gray text-sm">Sign in to your NANONI Studio account</p>
           </div>
 
-          <div className="bg-[#111116] border border-[hsla(0,0%,100%,0.06)] rounded-3xl p-8 sm:p-10 shadow-2xl relative overflow-hidden">
-            {/* Top gradient highlight */}
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-orange to-transparent opacity-50" />
+          <motion.div
+            initial={{ opacity: 0, y: 24, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}
+            className="bg-[#111116] border border-[hsla(0,0%,100%,0.06)] rounded-3xl p-8 sm:p-10 shadow-2xl relative overflow-hidden"
+          >
+            {/* Animated sweeping gradient line */}
+            <div className="absolute top-0 left-0 right-0 h-[2px] bg-[hsla(0,0%,100%,0.04)]">
+              <div
+                className="h-full w-1/3 bg-gradient-to-r from-transparent via-orange to-transparent opacity-70"
+                style={{ animation: 'gradient-sweep 3s ease-in-out infinite' }}
+              />
+            </div>
             
             <AnimatePresence mode="wait">
               {/* ═══ EMAIL STEP ═══ */}
@@ -292,6 +322,9 @@ export default function Login() {
                     >
                       Join the Waitlist
                     </button>
+                    <p className="text-xs text-soft-gray/60">
+                      Redirecting in {notFoundCountdown}s...
+                    </p>
                     <button
                       onClick={() => { setStep("email"); setError(null); }}
                       className="text-xs text-soft-gray hover:text-white transition-colors"
@@ -450,7 +483,7 @@ export default function Login() {
                 </motion.div>
               )}
             </AnimatePresence>
-          </div>
+          </motion.div>
           
           <p className="text-center text-xs text-soft-gray/60 mt-8">
             By continuing, you agree to our <a href="/terms" className="hover:text-white transition-colors underline decoration-white/20 underline-offset-2">Terms of Service</a> and <a href="/privacy" className="hover:text-white transition-colors underline decoration-white/20 underline-offset-2">Privacy Policy</a>.

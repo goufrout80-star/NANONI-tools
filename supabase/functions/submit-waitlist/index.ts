@@ -271,6 +271,11 @@ serve(async (req) => {
         </div>
       </div>
 
+      <div style="background:rgba(255,61,0,0.06);border:1px dashed rgba(255,61,0,0.2);border-radius:10px;padding:14px 20px;text-align:center;margin-bottom:12px">
+        <p style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#A0A0A0;margin-bottom:8px">Copy your code</p>
+        <p style="font-family:'Courier New',monospace;font-size:20px;font-weight:900;letter-spacing:4px;color:#F5F0EB;margin:0"><span style="color:#FF3D00">NNN</span> ${p1} ${p2}</p>
+      </div>
+
       <div class="security-note">
         <svg width="18" height="18" viewBox="0 0 18 18" fill="none" style="flex-shrink:0;margin-top:1px" xmlns="http://www.w3.org/2000/svg">
           <rect x="3" y="8" width="12" height="9" rx="2" stroke="#7A6FFF" stroke-width="1.5"/>

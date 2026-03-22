@@ -40,10 +40,10 @@ export function VerificationModal({ email, onClose, onVerified }: Props) {
      
     let formatted = "NNN "; 
     if (digits.length > 0) { 
-      formatted += digits.slice(0, 3); 
+      formatted += digits.slice(0, 4); 
     } 
-    if (digits.length > 3) { 
-      formatted += " " + digits.slice(3, 6); 
+    if (digits.length > 4) { 
+      formatted += " " + digits.slice(4, 8); 
     } 
      
     if (val === "" || val === "N" || val === "NN" || val === "NNN") { 
@@ -155,8 +155,8 @@ export function VerificationModal({ email, onClose, onVerified }: Props) {
                 type="text" 
                 value={code} 
                 onChange={handleCodeChange} 
-                placeholder="NNN 000 000" 
-                maxLength={11} 
+                placeholder="NNN 0000 0000" 
+                maxLength={13} 
                 className="w-full bg-[#0B0B0F] border border-[hsla(255,61,0,0.2)] text-center text-3xl font-bold tracking-[0.2em] py-4 rounded-xl outline-none text-[#F5F0EB] focus:border-[#FF3D00]" 
               /> 
             </motion.div> 
@@ -165,7 +165,7 @@ export function VerificationModal({ email, onClose, onVerified }: Props) {
  
             <button 
               onClick={handleVerify} 
-              disabled={loading || attempts >= 3 || code.length < 11} 
+              disabled={loading || attempts >= 3 || code.length < 13} 
               className="w-full py-3 bg-[#FF3D00] text-white font-bold rounded-xl disabled:opacity-50 flex justify-center items-center gap-2" 
             > 
               {loading && <Loader2 className="w-4 h-4 animate-spin" />} 
