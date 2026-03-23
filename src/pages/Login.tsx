@@ -1,20 +1,39 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, ArrowRight, CheckCircle2, ChevronLeft } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import HCaptcha from "@hcaptcha/react-hcaptcha";
 import { Logo } from "@/components/Logo";
 import { Navbar } from "@/components/Navbar";
 import { sendLoginCode, verifyLoginCode, setSession } from "@/lib/auth";
+import { useAuth } from "@/context/AuthContext";
 
 type LoginStep = "email" | "code" | "not_found" | "pending" | "success";
 
 export default function Login() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const captchaRef = useRef<HCaptcha>(null);
+  const { login: authLogin, isAuthenticated, session } = useAuth();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (isAuthenticated() && session) {
+      if (session.role === 'admin') {
+        navigate('/admin', { replace: true });
+      } else if (!session.tutorialCompleted) {
+        navigate('/dashboard', { replace: true });
+      } else {
+        navigate('/dashboard/tools', { replace: true });
+      }
+    }
+  }, [session, isAuthenticated, navigate]);
+
+  // Pre-fill email from URL params (from approval email link)
+  const prefillEmail = searchParams.get('email') || '';
 
   const [step, setStep] = useState<LoginStep>("email");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(prefillEmail);
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,13 +55,19 @@ export default function Login() {
     return () => clearInterval(timer);
   }, [step]);
 
-  // Redirect on success
+  // Redirect on success — based on role and tutorial state
   useEffect(() => {
-    if (step === "success") {
-      const timer = setTimeout(() => navigate("/"), 2000);
+    if (step === "success" && session) {
+      let dest = '/dashboard/tools';
+      if (session.role === 'admin') {
+        dest = '/admin';
+      } else if (!session.tutorialCompleted) {
+        dest = '/dashboard';
+      }
+      const timer = setTimeout(() => navigate(dest, { replace: true }), 2000);
       return () => clearTimeout(timer);
     }
-  }, [step, navigate]);
+  }, [step, session, navigate]);
 
   // Auto-redirect on not_found after 5s
   const [notFoundCountdown, setNotFoundCountdown] = useState(5);
@@ -129,6 +154,7 @@ export default function Login() {
     try {
       await verifyLoginCode(email, code);
       setSession(email, rememberMe);
+      await authLogin(email, rememberMe);
       setStep("success");
     } catch (err: any) {
       if (err.message === "WRONG_CODE") {

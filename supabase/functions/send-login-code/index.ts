@@ -71,32 +71,49 @@ serve(async (req) => {
       )
     }
 
-    // ═══ CHECK: is email on the verified waitlist? ═══
-    const { data: submission } = await supabase
-      .from('waitlist_submissions')
+    // ═══ CHECK: is email an admin? ═══
+    const { data: adminUser } = await supabase
+      .from('admin_users')
       .select('email, name')
       .eq('email', cleanEmail)
       .single()
 
-    if (!submission) {
-      // Check if still pending verification
-      const { data: pending } = await supabase
-        .from('waitlist_pending')
-        .select('email')
+    // ═══ CHECK: is email on the verified waitlist? ═══
+    let cleanName = 'there'
+
+    if (adminUser) {
+      // Admin found — skip all waitlist checks
+      cleanName = adminUser.name || 'Admin'
+    } else {
+      // Not an admin — check waitlist
+      const { data: submission } = await supabase
+        .from('waitlist_submissions')
+        .select('email, name')
         .eq('email', cleanEmail)
         .single()
 
-      if (pending) {
+      if (!submission) {
+        // Check if still pending verification
+        const { data: pending } = await supabase
+          .from('waitlist_pending')
+          .select('email')
+          .eq('email', cleanEmail)
+          .single()
+
+        if (pending) {
+          return new Response(
+            JSON.stringify({ status: 'pending' }),
+            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
+
         return new Response(
-          JSON.stringify({ status: 'pending' }),
+          JSON.stringify({ status: 'not_found' }),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
       }
 
-      return new Response(
-        JSON.stringify({ status: 'not_found' }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      cleanName = submission.name || 'there'
     }
 
     // ═══ GENERATE LOGIN CODE ═══
@@ -118,9 +135,6 @@ serve(async (req) => {
       identifier: cleanEmail,
       action: 'login_send'
     })
-
-    // ═══ SEND EMAIL VIA RESEND ═══
-    const cleanName = submission.name || 'there'
     const [prefix, p1, p2] = code.split(' ')
     const html = `<!DOCTYPE html>
 <html lang="en">
