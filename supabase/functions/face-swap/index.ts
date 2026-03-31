@@ -38,6 +38,45 @@ const SWAP_MODE_SUFFIXES: Record<string, string> = {
 
 const DEFAULT_PROMPT = `Make the person's face from picture number 1 replace the face in picture number 2. You can change the clothes but only one thing: don't change the hairstyle or anything about the character from picture number 1. Keep the same face of the person from picture one, don't change anything about their skin or face. Change the position of the person to make the picture look natural and well composed. Picture 1 is the user's face photo. Picture 2 is the template/background image. Create the final image with the face from picture 1 placed onto picture 2's scene/pose.`
 
+// ═══ HELPER: Prepare Image Base64 ═══
+async function prepareImageBase64(input: string): Promise<string> {
+  let base64Clean: string
+
+  // Case 1: already clean base64 (no prefix)
+  if (!input.startsWith('data:') && 
+      !input.startsWith('http') &&
+      !input.startsWith('templates/') &&
+      !input.startsWith('/')) {
+    base64Clean = input
+  }
+
+  // Case 2: data URI — strip the prefix
+  else if (input.startsWith('data:')) {
+    base64Clean = input.split(',')[1]
+  }
+
+  // Case 3: Cloudinary or any HTTP URL — fetch it
+  else if (input.startsWith('http')) {
+    console.log('Fetching image from URL:', input.slice(0, 80))
+    const res = await fetch(input)
+    if (!res.ok) throw new Error('Failed to fetch image from URL')
+    const buffer = await res.arrayBuffer()
+    const bytes = new Uint8Array(buffer)
+    let binary = ''
+    bytes.forEach(b => binary += String.fromCharCode(b))
+    base64Clean = btoa(binary)
+    console.log('Image fetched and converted, size:', buffer.byteLength)
+  }
+
+  // Case 4: old Supabase Storage path
+  else {
+    console.log('Detected old storage path:', input)
+    throw new Error('Old storage path detected. Use Cloudinary URL instead.')
+  }
+
+  return base64Clean
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -126,37 +165,6 @@ serve(async (req) => {
       )
     }
 
-    // Handle source image if it's a Cloudinary URL
-    let sourceBase64 = sourceImageBase64
-    let sourceMimeType = sourceMime || 'image/jpeg'
-
-    if (sourceImageBase64.startsWith('http')) {
-      console.log('Fetching source from Cloudinary:', sourceImageBase64.slice(0, 80))
-      
-      const imgResponse = await fetch(sourceImageBase64)
-      
-      if (!imgResponse.ok) {
-        return new Response(
-          JSON.stringify({ 
-            error: 'Failed to fetch source image'
-          }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
-      }
-      
-      const arrayBuffer = await imgResponse.arrayBuffer()
-      const uint8Array = new Uint8Array(arrayBuffer)
-      
-      let binary = ''
-      uint8Array.forEach(byte => {
-        binary += String.fromCharCode(byte)
-      })
-      sourceBase64 = btoa(binary)
-      sourceMimeType = imgResponse.headers.get('content-type') || 'image/jpeg'
-      
-      console.log('Source image fetched from Cloudinary, size:', arrayBuffer.byteLength)
-    }
-
     const cleanEmail = email.toLowerCase().trim()
 
     // Verify user exists and is approved
@@ -209,12 +217,15 @@ serve(async (req) => {
 
     const historyId = historyRecord?.id
 
-    // Get target image - either from base64 or Cloudinary URL
-    const targetImageSource = targetImageBase64 || targetTemplatePath
-    let targetImage: string
-    let targetMimeType = targetMime || 'image/jpeg'
+    // ═══ PREPARE IMAGES WITH HELPER FUNCTION ═══
+    let sourceClean: string
+    let targetClean: string
+    const sourceMimeType = sourceMime || 'image/jpeg'
+    const targetMimeType = targetMime || 'image/jpeg'
 
-    if (!targetImageSource) {
+    try {
+      sourceClean = await prepareImageBase64(sourceImageBase64)
+    } catch (err: any) {
       // Refund credit
       await supabase
         .from('waitlist_submissions')
@@ -224,13 +235,13 @@ serve(async (req) => {
       if (historyId) {
         await supabase
           .from('generation_history')
-          .update({ status: 'failed', error_message: 'No target image provided.' })
+          .update({ status: 'failed', error_message: `Source image error: ${err.message}` })
           .eq('id', historyId)
       }
 
       return new Response(
         JSON.stringify({ 
-          error: 'No target image provided.',
+          error: `Source image error: ${err.message}`,
           refunded: true,
           creditsLeft: newCredits + 1
         }),
@@ -238,51 +249,34 @@ serve(async (req) => {
       )
     }
 
-    if (targetImageSource.startsWith('http')) {
-      // It's a Cloudinary URL — fetch and convert to base64
-      console.log('Fetching from Cloudinary:', targetImageSource.slice(0, 80))
-      
-      const imgResponse = await fetch(targetImageSource)
-      
-      if (!imgResponse.ok) {
-        // Refund credit
-        await supabase
-          .from('waitlist_submissions')
-          .update({ credits: newCredits + 1 })
-          .eq('email', cleanEmail)
-
-        if (historyId) {
-          await supabase
-            .from('generation_history')
-            .update({ status: 'failed', error_message: 'Failed to fetch target image from Cloudinary' })
-            .eq('id', historyId)
-        }
-
-        return new Response(
-          JSON.stringify({ 
-            error: 'Failed to fetch target image',
-            refunded: true,
-            creditsLeft: newCredits + 1
-          }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
+    try {
+      const targetImageSource = targetImageBase64 || targetTemplatePath
+      if (!targetImageSource) {
+        throw new Error('No target image provided')
       }
-      
-      const arrayBuffer = await imgResponse.arrayBuffer()
-      const uint8Array = new Uint8Array(arrayBuffer)
-      
-      // Convert to base64
-      let binary = ''
-      uint8Array.forEach(byte => {
-        binary += String.fromCharCode(byte)
-      })
-      targetImage = btoa(binary)
-      targetMimeType = imgResponse.headers.get('content-type') || 'image/jpeg'
-      
-      console.log('Cloudinary image fetched, size:', arrayBuffer.byteLength)
-    } else {
-      // Already base64 from direct upload
-      targetImage = targetImageSource
+      targetClean = await prepareImageBase64(targetImageSource)
+    } catch (err: any) {
+      // Refund credit
+      await supabase
+        .from('waitlist_submissions')
+        .update({ credits: newCredits + 1 })
+        .eq('email', cleanEmail)
+
+      if (historyId) {
+        await supabase
+          .from('generation_history')
+          .update({ status: 'failed', error_message: `Target image error: ${err.message}` })
+          .eq('id', historyId)
+      }
+
+      return new Response(
+        JSON.stringify({ 
+          error: `Target image error: ${err.message}`,
+          refunded: true,
+          creditsLeft: newCredits + 1
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
     }
 
     // Get API key from admin_settings
@@ -346,14 +340,14 @@ serve(async (req) => {
             {
               inlineData: {
                 mimeType: sourceMimeType,
-                data: sourceBase64,
+                data: sourceClean,
               },
             },
             { text: 'Picture 2 (Template/Background):' },
             {
               inlineData: {
                 mimeType: targetMimeType,
-                data: targetImage,
+                data: targetClean,
               },
             },
             { text: fullPrompt },

@@ -20,8 +20,7 @@ type TargetTab = 'templates' | 'upload'
 interface UserTemplate {
   id: string
   name: string
-  storage_path: string
-  url: string | null
+  cloudinary_url: string
   created_at: string
 }
 
@@ -297,7 +296,8 @@ export default function FaceSwap() {
       if (targetFile) {
         targetB64 = await toBase64(targetFile)
       } else if (selectedTemplate) {
-        targetPath = selectedTemplate.storage_path
+        // Send Cloudinary URL directly as targetImageBase64
+        targetB64 = selectedTemplate.cloudinary_url
       }
 
       // Save uploaded target as template if checked
@@ -312,9 +312,7 @@ export default function FaceSwap() {
         hasSource: !!sourceB64,
         sourceLength: sourceB64?.length,
         hasTarget: !!targetB64,
-        targetLength: targetB64?.length,
-        hasTemplatePath: !!targetPath,
-        templatePath: targetPath,
+        targetValue: targetB64?.slice(0, 100),
         resolution,
         aspectRatio: aspectRatio === 'original' ? undefined : aspectRatio,
         swapMode,
@@ -325,7 +323,6 @@ export default function FaceSwap() {
           email: session.email,
           sourceImageBase64: sourceB64,
           targetImageBase64: targetB64,
-          targetTemplatePath: targetPath,
           sourceMime: sourceFile.type,
           targetMime: targetFile?.type,
           resolution,
@@ -493,7 +490,7 @@ export default function FaceSwap() {
             isRefunded={animRefunded}
             resultImage={resultImage}
             sourcePreview={sourcePreview}
-            targetPreview={targetPreview || selectedTemplate?.url}
+            targetPreview={targetPreview || selectedTemplate?.cloudinary_url}
             onDownload={handleDownload}
             onRetry={handleRetry}
             onClose={handleCloseAnimation}
@@ -688,8 +685,8 @@ export default function FaceSwap() {
                           : 'border-transparent hover:border-white/20'
                       }`}
                     >
-                      {t.url ? (
-                        <img src={t.url} alt={t.name} className="w-full h-full object-cover" />
+                      {t.cloudinary_url ? (
+                        <img src={t.cloudinary_url} alt={t.name} className="w-full h-full object-cover" />
                       ) : (
                         <div className="w-full h-full bg-white/5 flex items-center justify-center">
                           <ImageIcon className="w-4 h-4 text-soft-gray/30" />
