@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Download, RotateCcw, X, CheckCircle, AlertCircle, Coins } from 'lucide-react'
 
@@ -24,108 +24,55 @@ interface GenerationAnimationProps {
   onClose?: () => void
 }
 
-// Particle system using canvas
-function ParticleCanvas({ active }: { active: boolean }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const animRef = useRef<number>(0)
-  const particlesRef = useRef<Array<{
-    x: number; y: number; vx: number; vy: number
-    size: number; alpha: number; color: string; life: number; maxLife: number
-  }>>([])
-
-  const animate = useCallback(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height)
-    const cx = canvas.width / 2
-    const cy = canvas.height / 2
-
-    // Spawn particles
-    if (active && Math.random() < 0.3) {
-      const angle = Math.random() * Math.PI * 2
-      const dist = 60 + Math.random() * 40
-      particlesRef.current.push({
-        x: cx + Math.cos(angle) * dist,
-        y: cy + Math.sin(angle) * dist,
-        vx: (Math.random() - 0.5) * 1.5,
-        vy: (Math.random() - 0.5) * 1.5,
-        size: 1 + Math.random() * 3,
-        alpha: 0.8,
-        color: Math.random() > 0.5 ? '#FF3D00' : '#7A6FFF',
-        life: 0,
-        maxLife: 60 + Math.random() * 60,
-      })
-    }
-
-    // Update & draw particles
-    particlesRef.current = particlesRef.current.filter((p) => {
-      p.life++
-      p.x += p.vx
-      p.y += p.vy
-      p.alpha = Math.max(0, 0.8 * (1 - p.life / p.maxLife))
-
-      ctx.beginPath()
-      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2)
-      ctx.fillStyle = p.color
-      ctx.globalAlpha = p.alpha
-      ctx.fill()
-      ctx.globalAlpha = 1
-
-      return p.life < p.maxLife
-    })
-
-    // Glow rings
-    if (active) {
-      const t = Date.now() / 1000
-      for (let i = 0; i < 2; i++) {
-        const phase = (t * 0.5 + i * 0.5) % 1
-        const radius = 30 + phase * 100
-        const alpha = 0.3 * (1 - phase)
-        ctx.beginPath()
-        ctx.arc(cx, cy, radius, 0, Math.PI * 2)
-        ctx.strokeStyle = i === 0 ? '#FF3D00' : '#7A6FFF'
-        ctx.lineWidth = 2
-        ctx.globalAlpha = alpha
-        ctx.stroke()
-        ctx.globalAlpha = 1
-      }
-    }
-
-    animRef.current = requestAnimationFrame(animate)
-  }, [active])
-
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    canvas.width = canvas.offsetWidth * 2
-    canvas.height = canvas.offsetHeight * 2
-    const ctx = canvas.getContext('2d')
-    if (ctx) ctx.scale(2, 2)
-    animRef.current = requestAnimationFrame(animate)
-    return () => cancelAnimationFrame(animRef.current)
-  }, [animate])
+// Background particles
+function BackgroundParticles() {
+  const particles = Array.from({ length: 25 }, (_, i) => ({
+    id: i,
+    x: Math.random() * 100,
+    y: Math.random() * 100,
+    size: 1 + Math.random(),
+    duration: 8 + Math.random() * 12,
+    delay: Math.random() * 5,
+  }))
 
   return (
-    <canvas
-      ref={canvasRef}
-      className="absolute inset-0 w-full h-full pointer-events-none"
-      style={{ width: '100%', height: '100%' }}
-    />
+    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      {particles.map((p) => (
+        <motion.div
+          key={p.id}
+          className="absolute rounded-full bg-white"
+          style={{
+            left: `${p.x}%`,
+            top: `${p.y}%`,
+            width: `${p.size}px`,
+            height: `${p.size}px`,
+            opacity: 0.1 + Math.random() * 0.1,
+          }}
+          animate={{
+            y: [0, -30, 0],
+            x: [0, Math.random() * 20 - 10, 0],
+          }}
+          transition={{
+            duration: p.duration,
+            repeat: Infinity,
+            delay: p.delay,
+            ease: 'easeInOut',
+          }}
+        />
+      ))}
+    </div>
   )
 }
 
 // Confetti burst for completion
 function ConfettiBurst() {
-  const particles = Array.from({ length: 40 }, (_, i) => ({
+  const particles = Array.from({ length: 20 }, (_, i) => ({
     id: i,
-    angle: (i / 40) * Math.PI * 2 + (Math.random() - 0.5) * 0.5,
+    angle: (i / 20) * Math.PI * 2 + (Math.random() - 0.5) * 0.5,
     distance: 80 + Math.random() * 120,
-    size: 4 + Math.random() * 6,
-    color: Math.random() > 0.5 ? '#FF3D00' : '#7A6FFF',
-    delay: Math.random() * 0.2,
+    size: 3 + Math.random() * 5,
+    color: '#FF3D00',
+    delay: Math.random() * 0.15,
     rotation: Math.random() * 360,
   }))
 
@@ -219,7 +166,14 @@ export default function GenerationAnimation({
           className="absolute inset-0 z-50 flex items-center justify-center"
         >
           {/* Backdrop */}
-          <div className="absolute inset-0 bg-[#0B0B0F]/90 backdrop-blur-md rounded-2xl" />
+          <div className="absolute inset-0 bg-[rgba(11,11,15,0.92)] backdrop-blur-md rounded-2xl" />
+          
+          {/* Background particles */}
+          <BackgroundParticles />
+          
+          {/* Blurred blobs */}
+          <div className="absolute left-[10%] top-[30%] w-[200px] h-[200px] rounded-full bg-[rgba(255,61,0,0.06)] blur-[200px] pointer-events-none" />
+          <div className="absolute right-[10%] bottom-[30%] w-[200px] h-[200px] rounded-full bg-[rgba(122,111,255,0.05)] blur-[200px] pointer-events-none" />
 
           {/* Close button */}
           {(isComplete || isError) && (
@@ -236,71 +190,134 @@ export default function GenerationAnimation({
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              className="relative flex flex-col items-center z-10 w-full max-w-sm px-6"
+              className="relative flex flex-col items-center z-10 w-full max-w-md px-6"
             >
-              <ParticleCanvas active />
-
-              {/* Orbiting thumbnails */}
-              <div className="relative w-40 h-40 mb-6">
-                {/* NNN Logo center */}
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
-                  className="absolute inset-0 flex items-center justify-center"
-                >
-                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-orange to-purple flex items-center justify-center shadow-lg shadow-orange/20">
-                    <span className="text-white font-black text-lg tracking-tight">N</span>
-                  </div>
-                </motion.div>
-
-                {/* Source thumbnail orbit */}
+              {/* Main container with input images */}
+              <div className="relative flex items-center justify-center mb-8">
+                {/* Source image (left) */}
                 {sourcePreview && (
                   <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 6, repeat: Infinity, ease: 'linear' }}
-                    className="absolute inset-0"
+                    animate={{ y: [0, -6, 0] }}
+                    transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+                    className="absolute left-0 w-[52px] h-[52px] rounded-full overflow-hidden border-2 border-white shadow-lg"
+                    style={{ transform: 'translateX(-80px)' }}
                   >
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-10 h-10 rounded-full overflow-hidden border-2 border-orange shadow-lg">
-                      <img src={sourcePreview} alt="" className="w-full h-full object-cover" />
-                    </div>
+                    <img src={sourcePreview} alt="" className="w-full h-full object-cover" />
                   </motion.div>
                 )}
 
-                {/* Target thumbnail orbit */}
+                {/* Connecting line (source to logo) */}
+                <svg className="absolute left-0" width="80" height="2" style={{ transform: 'translateX(-80px)' }}>
+                  <motion.line
+                    x1="52"
+                    y1="1"
+                    x2="80"
+                    y2="1"
+                    stroke="rgba(255,61,0,0.3)"
+                    strokeWidth="1"
+                    strokeDasharray="4 4"
+                    animate={{ strokeDashoffset: [0, -8] }}
+                    transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                  />
+                </svg>
+
+                {/* Logo center with animations */}
+                <div className="relative w-16 h-16">
+                  {/* Radar pulse rings */}
+                  {[0, 1, 2].map((i) => (
+                    <motion.div
+                      key={i}
+                      className="absolute inset-0 rounded-full border border-[rgba(255,61,0,0.4)]"
+                      style={{ left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }}
+                      animate={{
+                        width: ['0px', '120px'],
+                        height: ['0px', '120px'],
+                        opacity: [0.8, 0],
+                      }}
+                      transition={{
+                        duration: 2,
+                        repeat: Infinity,
+                        delay: i * 0.66,
+                        ease: 'easeOut',
+                      }}
+                    />
+                  ))}
+
+                  {/* Logo with scanline and flash */}
+                  <div className="relative w-16 h-16 overflow-hidden rounded-lg">
+                    <img
+                      src="/logo.svg"
+                      alt="NNN"
+                      className="w-full h-full object-contain"
+                      style={{ filter: 'brightness(0) invert(1)' }}
+                    />
+                    
+                    {/* Orange flash sweep */}
+                    <motion.div
+                      className="absolute top-1/2 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[rgba(255,61,0,0.9)] to-transparent"
+                      style={{ transform: 'translateY(-50%)' }}
+                      animate={{ x: ['-100%', '200%'] }}
+                      transition={{
+                        duration: 0.4,
+                        repeat: Infinity,
+                        repeatDelay: 1.6,
+                        ease: 'easeInOut',
+                      }}
+                    />
+
+                    {/* Scanline sweep */}
+                    <motion.div
+                      className="absolute left-0 w-full h-[1px] bg-[rgba(255,61,0,0.6)]"
+                      animate={{ y: ['0%', '100%'] }}
+                      transition={{
+                        duration: 1.5,
+                        repeat: Infinity,
+                        repeatDelay: 1.5,
+                        ease: 'linear',
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Connecting line (logo to target) */}
+                <svg className="absolute right-0" width="80" height="2" style={{ transform: 'translateX(80px)' }}>
+                  <motion.line
+                    x1="0"
+                    y1="1"
+                    x2="28"
+                    y2="1"
+                    stroke="rgba(255,61,0,0.3)"
+                    strokeWidth="1"
+                    strokeDasharray="4 4"
+                    animate={{ strokeDashoffset: [0, -8] }}
+                    transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                  />
+                </svg>
+
+                {/* Target image (right) */}
                 {targetPreview && (
                   <motion.div
-                    animate={{ rotate: -360 }}
-                    transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
-                    className="absolute inset-0"
+                    animate={{ y: [0, 6, 0] }}
+                    transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut', delay: 1.5 }}
+                    className="absolute right-0 w-[52px] h-[52px] rounded-full overflow-hidden border-2 border-white shadow-lg"
+                    style={{ transform: 'translateX(80px)' }}
                   >
-                    <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-10 h-10 rounded-full overflow-hidden border-2 border-purple shadow-lg">
-                      <img src={targetPreview} alt="" className="w-full h-full object-cover" />
-                    </div>
+                    <img src={targetPreview} alt="" className="w-full h-full object-cover" />
                   </motion.div>
                 )}
-
-                {/* Scanning line */}
-                <motion.div
-                  animate={{ y: [-70, 70, -70] }}
-                  transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-                  className="absolute left-0 right-0 top-1/2 h-[2px] bg-gradient-to-r from-transparent via-orange/60 to-transparent"
-                />
               </div>
 
-              {/* Stage text */}
-              <div className="text-center mb-4">
-                <motion.p
-                  className="text-xs text-soft-gray/60 mb-2 font-mono"
-                >
-                  NNN v1 Processing...
-                </motion.p>
+              {/* Status text */}
+              <div className="text-center mb-3">
+                <p className="text-[10px] text-[#7A6FFF] font-[Stardom] tracking-[3px] mb-2">NNN v1</p>
                 <AnimatePresence mode="wait">
                   <motion.p
                     key={stage}
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -8 }}
-                    className="text-sm font-semibold text-foreground"
+                    className="text-base font-bold text-white"
+                    style={{ fontFamily: 'Inter' }}
                   >
                     {STAGES[stage]}
                   </motion.p>
@@ -308,15 +325,15 @@ export default function GenerationAnimation({
               </div>
 
               {/* Timer */}
-              <p className="text-[11px] text-soft-gray/40 font-mono">{elapsed}s elapsed</p>
+              <p className="text-xs text-[#A0A0A0] mb-4" style={{ fontFamily: 'Inter' }}>{elapsed}s elapsed</p>
 
-              {/* Stage dots */}
-              <div className="flex gap-1.5 mt-4">
+              {/* Progress dots */}
+              <div className="flex gap-2">
                 {STAGES.map((_, i) => (
                   <div
                     key={i}
-                    className={`w-1.5 h-1.5 rounded-full transition-all duration-500 ${
-                      i <= stage ? 'bg-orange scale-110' : 'bg-white/10'
+                    className={`w-2 h-2 rounded-full transition-all duration-500 ${
+                      i <= stage ? 'bg-[#FF3D00]' : 'bg-[rgba(255,255,255,0.2)]'
                     }`}
                   />
                 ))}

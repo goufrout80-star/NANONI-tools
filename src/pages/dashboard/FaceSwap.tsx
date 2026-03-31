@@ -109,6 +109,13 @@ export default function FaceSwap() {
   const [history, setHistory] = useState<HistoryItem[]>([])
   const [historyModalItem, setHistoryModalItem] = useState<HistoryItem | null>(null)
 
+  // Fullscreen modal
+  const [fullscreenImage, setFullscreenImage] = useState<string | null>(null)
+  const [imageZoom, setImageZoom] = useState(1.0)
+  const [imagePan, setImagePan] = useState({ x: 0, y: 0 })
+  const [isDragging, setIsDragging] = useState(false)
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
+
   const noCredits = (session?.credits ?? 0) <= 0
   const hasSource = !!sourcePreview
   const hasTarget = !!targetPreview || !!selectedTemplate
@@ -379,6 +386,65 @@ export default function FaceSwap() {
   const handleCloseAnimation = () => {
     resetResult()
   }
+
+  // Fullscreen modal handlers
+  const openFullscreen = (imageUrl: string) => {
+    setFullscreenImage(imageUrl)
+    setImageZoom(1.0)
+    setImagePan({ x: 0, y: 0 })
+  }
+
+  const closeFullscreen = () => {
+    setFullscreenImage(null)
+    setImageZoom(1.0)
+    setImagePan({ x: 0, y: 0 })
+  }
+
+  const zoomIn = () => {
+    setImageZoom((z) => Math.min(z + 0.25, 3.0))
+  }
+
+  const zoomOut = () => {
+    setImageZoom((z) => Math.max(z - 0.25, 0.5))
+  }
+
+  const resetZoom = () => {
+    setImageZoom(1.0)
+    setImagePan({ x: 0, y: 0 })
+  }
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (imageZoom > 1.0) {
+      setIsDragging(true)
+      setDragStart({ x: e.clientX - imagePan.x, y: e.clientY - imagePan.y })
+    }
+  }
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (isDragging && imageZoom > 1.0) {
+      setImagePan({
+        x: e.clientX - dragStart.x,
+        y: e.clientY - dragStart.y,
+      })
+    }
+  }
+
+  const handleMouseUp = () => {
+    setIsDragging(false)
+  }
+
+  // Keyboard controls for fullscreen
+  useEffect(() => {
+    if (!fullscreenImage) return
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeFullscreen()
+      else if (e.key === '+' || e.key === '=') zoomIn()
+      else if (e.key === '-' || e.key === '_') zoomOut()
+      else if (e.key === '0') resetZoom()
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [fullscreenImage])
 
   // ── Upload Zone Component ──
   const UploadZone = ({
@@ -854,7 +920,15 @@ export default function FaceSwap() {
                 </div>
 
                 {historyModalItem.resultUrl && (
-                  <img src={historyModalItem.resultUrl} alt="Result" className="w-full rounded-xl object-contain max-h-[60vh]" />
+                  <div className="relative group">
+                    <img src={historyModalItem.resultUrl} alt="Result" className="w-full rounded-xl object-contain max-h-[60vh] cursor-zoom-in" onClick={() => openFullscreen(historyModalItem.resultUrl!)} />
+                    <button
+                      onClick={() => openFullscreen(historyModalItem.resultUrl!)}
+                      className="absolute top-2 right-2 p-1.5 rounded bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <Maximize2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 )}
 
                 <div className="flex gap-2">
@@ -880,6 +954,107 @@ export default function FaceSwap() {
                   </button>
                 </div>
               </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ═══ FULLSCREEN IMAGE MODAL ═══ */}
+        <AnimatePresence>
+          {fullscreenImage && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 z-[9999] flex items-center justify-center"
+              onClick={closeFullscreen}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
+            >
+              {/* Backdrop */}
+              <div className="absolute inset-0 bg-black/95" />
+
+              {/* Top bar */}
+              <div className="absolute top-4 left-0 right-0 flex items-center justify-between px-6 z-10">
+                <p className="text-sm font-semibold text-white" style={{ fontFamily: 'Inter' }}>Generation Result</p>
+                <div className="flex items-center gap-2">
+                  {/* Zoom In */}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); zoomIn(); }}
+                    className="w-8 h-8 rounded-lg bg-white/8 border border-white/10 flex items-center justify-center text-white hover:bg-orange/15 hover:border-orange/30 transition-colors"
+                    title="Zoom In (+)"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                  {/* Zoom Out */}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); zoomOut(); }}
+                    className="w-8 h-8 rounded-lg bg-white/8 border border-white/10 flex items-center justify-center text-white hover:bg-orange/15 hover:border-orange/30 transition-colors"
+                    title="Zoom Out (-)"
+                  >
+                    <span className="text-lg font-bold leading-none">−</span>
+                  </button>
+                  {/* Reset */}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); resetZoom(); }}
+                    className="w-8 h-8 rounded-lg bg-white/8 border border-white/10 flex items-center justify-center text-white hover:bg-orange/15 hover:border-orange/30 transition-colors text-xs font-bold"
+                    title="Reset (0)"
+                  >
+                    1:1
+                  </button>
+                  {/* Download */}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); const a = document.createElement('a'); a.href = fullscreenImage; a.download = `nanoni-faceswap-${Date.now()}.png`; a.click(); }}
+                    className="w-8 h-8 rounded-lg bg-white/8 border border-white/10 flex items-center justify-center text-white hover:bg-orange/15 hover:border-orange/30 transition-colors"
+                    title="Download"
+                  >
+                    <Download className="w-4 h-4" />
+                  </button>
+                  {/* Close */}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); closeFullscreen(); }}
+                    className="w-8 h-8 rounded-lg bg-white/8 border border-white/10 flex items-center justify-center text-white hover:bg-orange/15 hover:border-orange/30 transition-colors"
+                    title="Close (Esc)"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Image container */}
+              <motion.div
+                initial={{ scale: 0.9 }}
+                animate={{ scale: 1 }}
+                exit={{ scale: 0.9 }}
+                transition={{ duration: 0.2 }}
+                className="relative max-w-[90vw] max-h-[85vh] flex items-center justify-center"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div
+                  className="relative overflow-hidden rounded-xl"
+                  style={{
+                    cursor: imageZoom > 1.0 ? (isDragging ? 'grabbing' : 'grab') : 'default',
+                  }}
+                  onMouseDown={handleMouseDown}
+                >
+                  <img
+                    src={fullscreenImage}
+                    alt="Fullscreen"
+                    className="max-w-[90vw] max-h-[85vh] object-contain select-none"
+                    style={{
+                      transform: `scale(${imageZoom}) translate(${imagePan.x / imageZoom}px, ${imagePan.y / imageZoom}px)`,
+                      transition: isDragging ? 'none' : 'transform 0.2s ease-out',
+                    }}
+                    draggable={false}
+                  />
+                </div>
+              </motion.div>
+
+              {/* Zoom percentage indicator */}
+              <div className="absolute bottom-4 left-6 px-3 py-1.5 rounded-lg bg-black/60 border border-white/10 text-white text-xs font-medium">
+                {Math.round(imageZoom * 100)}%
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
