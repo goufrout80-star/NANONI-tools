@@ -48,7 +48,7 @@ serve(async (req) => {
       .update({
         approved: true,
         approved_at: new Date().toISOString(),
-        credits: 10,
+        credits: 50,
       })
       .eq('email', cleanEmail)
 
@@ -89,7 +89,7 @@ serve(async (req) => {
 
       <div style="background:rgba(255,61,0,0.08);border:1px solid rgba(255,61,0,0.2);border-radius:12px;padding:16px;margin-bottom:24px;">
         <p style="color:#F0E8DE;font-size:14px;margin:0;font-weight:600;">
-          You have <span style="color:#FF3D00;font-size:20px;">10</span> free credits to try Face Swap
+          You have <span style="color:#FF3D00;font-size:20px;">50</span> free credits to try Face Swap
         </p>
         <p style="color:#A0A0A0;font-size:12px;margin:8px 0 0;">Powered by NNN v1</p>
       </div>

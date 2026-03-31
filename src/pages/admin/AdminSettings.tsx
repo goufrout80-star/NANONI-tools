@@ -108,7 +108,67 @@ export default function AdminSettings() {
     <AdminLayout title="Settings">
       <div className="max-w-3xl mx-auto space-y-8">
 
-        {/* ═══ 1. API CONFIGURATION ═══ */}
+        {/* ═══ 1. MODEL CONFIGURATION ═══ */}
+        <section>
+          <div className="flex items-center gap-3 mb-5">
+            <Settings className="w-5 h-5 text-purple" />
+            <h2 className="text-lg font-black text-foreground">Model Configuration</h2>
+          </div>
+
+          <div className="rounded-xl border border-white/5 bg-card p-5 space-y-5">
+            {/* NNN v1 */}
+            <div className="space-y-2">
+              <label className="text-[10px] uppercase tracking-[2px] text-soft-gray font-bold block">NNN v1 Model</label>
+              <input
+                type="text"
+                value={settings.model_nnn1 || 'gemini-3.1-flash-lite-preview'}
+                onChange={(e) => setSettings((p) => ({ ...p, model_nnn1: e.target.value }))}
+                placeholder="gemini-3.1-flash-lite-preview"
+                className="w-full px-3 py-2.5 rounded-lg border border-white/10 bg-white/[0.02] text-foreground text-sm font-mono focus:outline-none focus:border-purple/40 transition-colors"
+              />
+            </div>
+
+            {/* NNN v1 Pro */}
+            <div className="space-y-2">
+              <label className="text-[10px] uppercase tracking-[2px] text-soft-gray font-bold block">NNN v1 Pro Model</label>
+              <input
+                type="text"
+                value={settings.model_nnn1_pro || 'gemini-3.1-flash-image-preview'}
+                onChange={(e) => setSettings((p) => ({ ...p, model_nnn1_pro: e.target.value }))}
+                placeholder="gemini-3.1-flash-image-preview"
+                className="w-full px-3 py-2.5 rounded-lg border border-white/10 bg-white/[0.02] text-foreground text-sm font-mono focus:outline-none focus:border-purple/40 transition-colors"
+              />
+            </div>
+
+            {/* NNN v1 Pro Max */}
+            <div className="space-y-2">
+              <label className="text-[10px] uppercase tracking-[2px] text-soft-gray font-bold block">NNN v1 Pro Max Model</label>
+              <input
+                type="text"
+                value={settings.model_nnn1_pro_max || 'gemini-3.1-pro-preview'}
+                onChange={(e) => setSettings((p) => ({ ...p, model_nnn1_pro_max: e.target.value }))}
+                placeholder="gemini-3.1-pro-preview"
+                className="w-full px-3 py-2.5 rounded-lg border border-white/10 bg-white/[0.02] text-foreground text-sm font-mono focus:outline-none focus:border-purple/40 transition-colors"
+              />
+            </div>
+
+            {/* Save button */}
+            <button
+              onClick={async () => {
+                await saveSetting('model_nnn1', settings.model_nnn1 || 'gemini-3.1-flash-lite-preview')
+                await saveSetting('model_nnn1_pro', settings.model_nnn1_pro || 'gemini-3.1-flash-image-preview')
+                await saveSetting('model_nnn1_pro_max', settings.model_nnn1_pro_max || 'gemini-3.1-pro-preview')
+              }}
+              disabled={savingKey !== null}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-purple text-white text-xs font-bold hover:bg-purple/90 transition-colors disabled:opacity-50"
+            >
+              {savingKey ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+              Save Models
+            </button>
+          </div>
+        </section>
+
+        {/* ═══ 2. API CONFIGURATION ═══ */}
         <section>
           <div className="flex items-center gap-3 mb-5">
             <Key className="w-5 h-5 text-orange" />
@@ -138,14 +198,6 @@ export default function AdminSettings() {
               </div>
             </div>
 
-            {/* Model name (read only) */}
-            <div className="space-y-2">
-              <label className="text-[10px] uppercase tracking-[2px] text-soft-gray font-bold block">Model</label>
-              <div className="px-3 py-2.5 rounded-lg border border-white/5 bg-white/[0.01] text-foreground text-sm flex items-center gap-2">
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple/20 text-purple">NNN v1</span>
-                <span className="text-soft-gray/40 text-xs">(Read only)</span>
-              </div>
-            </div>
 
             {/* Buttons */}
             <div className="flex gap-2">
@@ -171,7 +223,7 @@ export default function AdminSettings() {
           </div>
         </section>
 
-        {/* ═══ 2. FACE SWAP PROMPT EDITOR ═══ */}
+        {/* ═══ 3. FACE SWAP PROMPT EDITOR ═══ */}
         <section>
           <div className="flex items-center gap-3 mb-5">
             <FileText className="w-5 h-5 text-purple" />
@@ -227,7 +279,73 @@ export default function AdminSettings() {
           </div>
         </section>
 
-        {/* ═══ 3. TOOL SETTINGS ═══ */}
+        {/* ═══ 4. CREDIT PRICING ═══ */}
+        <section>
+          <div className="flex items-center gap-3 mb-5">
+            <Sliders className="w-5 h-5 text-orange" />
+            <h2 className="text-lg font-black text-foreground">Credit Pricing</h2>
+          </div>
+
+          <div className="rounded-xl border border-white/5 bg-card p-5 space-y-5">
+            <p className="text-xs text-soft-gray/60">Configure credit costs per model tier and resolution</p>
+            
+            {/* Pricing table */}
+            <div className="grid grid-cols-4 gap-2 text-xs">
+              <div className="font-bold text-soft-gray"></div>
+              <div className="font-bold text-center text-soft-gray">1K</div>
+              <div className="font-bold text-center text-soft-gray">2K</div>
+              <div className="font-bold text-center text-soft-gray">4K</div>
+
+              {/* NNN v1 */}
+              <div className="font-bold text-foreground py-2">NNN v1</div>
+              <input type="number" min="1" value={settings.credits_nnn1_1k || '1'} onChange={(e) => setSettings((p) => ({ ...p, credits_nnn1_1k: e.target.value }))} className="px-2 py-1.5 rounded border border-white/10 bg-white/[0.02] text-center text-foreground" />
+              <input type="number" min="1" value={settings.credits_nnn1_2k || '2'} onChange={(e) => setSettings((p) => ({ ...p, credits_nnn1_2k: e.target.value }))} className="px-2 py-1.5 rounded border border-white/10 bg-white/[0.02] text-center text-foreground" />
+              <input type="number" min="1" value={settings.credits_nnn1_4k || '3'} onChange={(e) => setSettings((p) => ({ ...p, credits_nnn1_4k: e.target.value }))} className="px-2 py-1.5 rounded border border-white/10 bg-white/[0.02] text-center text-foreground" />
+
+              {/* NNN v1 Pro */}
+              <div className="font-bold text-purple py-2">NNN v1 Pro</div>
+              <input type="number" min="1" value={settings.credits_nnn1pro_1k || '2'} onChange={(e) => setSettings((p) => ({ ...p, credits_nnn1pro_1k: e.target.value }))} className="px-2 py-1.5 rounded border border-white/10 bg-white/[0.02] text-center text-foreground" />
+              <input type="number" min="1" value={settings.credits_nnn1pro_2k || '4'} onChange={(e) => setSettings((p) => ({ ...p, credits_nnn1pro_2k: e.target.value }))} className="px-2 py-1.5 rounded border border-white/10 bg-white/[0.02] text-center text-foreground" />
+              <input type="number" min="1" value={settings.credits_nnn1pro_4k || '6'} onChange={(e) => setSettings((p) => ({ ...p, credits_nnn1pro_4k: e.target.value }))} className="px-2 py-1.5 rounded border border-white/10 bg-white/[0.02] text-center text-foreground" />
+
+              {/* NNN v1 Pro Max */}
+              <div className="font-bold text-orange py-2">NNN v1 Pro Max</div>
+              <input type="number" min="1" value={settings.credits_nnn1promax_1k || '4'} onChange={(e) => setSettings((p) => ({ ...p, credits_nnn1promax_1k: e.target.value }))} className="px-2 py-1.5 rounded border border-white/10 bg-white/[0.02] text-center text-foreground" />
+              <input type="number" min="1" value={settings.credits_nnn1promax_2k || '8'} onChange={(e) => setSettings((p) => ({ ...p, credits_nnn1promax_2k: e.target.value }))} className="px-2 py-1.5 rounded border border-white/10 bg-white/[0.02] text-center text-foreground" />
+              <input type="number" min="1" value={settings.credits_nnn1promax_4k || '12'} onChange={(e) => setSettings((p) => ({ ...p, credits_nnn1promax_4k: e.target.value }))} className="px-2 py-1.5 rounded border border-white/10 bg-white/[0.02] text-center text-foreground" />
+            </div>
+
+            {/* Default user credits */}
+            <div className="space-y-2 pt-3 border-t border-white/5">
+              <label className="text-[10px] uppercase tracking-[2px] text-soft-gray font-bold block">Default User Credits</label>
+              <input
+                type="number"
+                value={settings.default_user_credits || '50'}
+                onChange={(e) => setSettings((p) => ({ ...p, default_user_credits: e.target.value }))}
+                min={1}
+                max={1000}
+                className="w-32 px-3 py-2 rounded-lg border border-white/10 bg-white/[0.02] text-foreground text-sm focus:outline-none focus:border-orange/40"
+              />
+            </div>
+
+            {/* Save button */}
+            <button
+              onClick={async () => {
+                const keys = ['credits_nnn1_1k', 'credits_nnn1_2k', 'credits_nnn1_4k', 'credits_nnn1pro_1k', 'credits_nnn1pro_2k', 'credits_nnn1pro_4k', 'credits_nnn1promax_1k', 'credits_nnn1promax_2k', 'credits_nnn1promax_4k', 'default_user_credits']
+                for (const key of keys) {
+                  await saveSetting(key, settings[key] || '1')
+                }
+              }}
+              disabled={savingKey !== null}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-orange text-white text-xs font-bold hover:bg-orange/90 transition-colors disabled:opacity-50"
+            >
+              {savingKey ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+              Save Pricing
+            </button>
+          </div>
+        </section>
+
+        {/* ═══ 5. TOOL SETTINGS ═══ */}
         <section>
           <div className="flex items-center gap-3 mb-5">
             <Sliders className="w-5 h-5 text-orange" />

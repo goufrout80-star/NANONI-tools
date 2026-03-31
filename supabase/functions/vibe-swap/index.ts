@@ -8,36 +8,34 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
-const SWAP_MODE_SUFFIXES: Record<string, string> = {
-  default: '',
-  face_only: `\n\nSWAP MODE: FACE ONLY
-- Replace ONLY the inner facial features (eyes, nose, mouth, jawline, cheeks, skin) with the user's face.
-- Keep the template's EXACT hair style, hair color, hair length, head shape, and ears completely unchanged.
-- The hair, forehead shape, and head silhouette must remain 100% from the template.
-- Only the face region (from hairline to chin, between the ears) should change to match the user.`,
-  head_swap: `\n\nSWAP MODE: HEAD SWAP
-- Replace the ENTIRE head (face + hair + head shape) with the user's head from Picture 1.
-- Take the user's face, hair style, hair color, and head shape and place them onto the template body.
-- If the template is an illustration, vector art, or cartoon style, render the user's head in that SAME art style while keeping it recognizable as the user.
-- Match the art style, line work, colors, and rendering technique of the template — but the head identity (face + hair) comes from the user.
-- Keep the template's body, clothing, pose, background, and composition unchanged.`,
-  exact_face: `\n\nSWAP MODE: EXACT FACE
-- Take ONLY the facial features from the user's face in Picture 1 and place them into the template.
-- The face must be placed in the EXACT same position, angle, tilt, and pose as the template face.
-- Keep the template's EXACT hair style, hair color, hair design, hair length, and hair flow.
-- If the template has accessories on the head — KEEP them exactly as they are.
-- If the template is a non-photographic style, the swapped face MUST be rendered in that EXACT SAME style.
-- Match the template's EXACT art style, color palette, lighting, and rendering.`,
-  face_hair: `\n\nSWAP MODE: FACE & HAIR
-- Take the facial features AND the hair style and hair color from the user in Picture 1 and place them into the template.
-- The face and hair must be placed in the EXACT same position, angle, tilt, and pose as the template.
-- If the template has accessories on the head — KEEP them exactly as they are.
-- Do NOT bring any accessories from the person's photo — only the face and hair.
-- Keep all clothing, body, background, and composition from the template unchanged.
-- If the template is a non-photographic style, the swapped face and hair MUST be rendered in that EXACT SAME style.`,
-}
+const DEFAULT_VIBE_PROMPT = `IDENTITY LOCK (FROM IMAGE_1):
+- Keep the person exactly the same
+- Same face, same skin tone, same facial details
+- Same hair style, hair length, hair color
+- Same body proportions
+- Do NOT change, edit, beautify, or stylize the face or skin
+- Do NOT change hair in any way
 
-const DEFAULT_PROMPT = `Make the person's face from picture number 1 replace the face in picture number 2. You can change the clothes but only one thing: don't change the hairstyle or anything about the character from picture number 1. Keep the same face of the person from picture one, don't change anything about their skin or face. Change the position of the person to make the picture look natural and well composed. Picture 1 is the user's face photo. Picture 2 is the template/background image. Create the final image with the face from picture 1 placed onto picture 2's scene/pose.`
+POSITION & CAMERA LOCK (FROM IMAGE_1):
+- Keep the exact same position of the person
+- Keep the exact same pose, camera angle, framing, crop
+- MAINTAIN THE EXACT ASPECT RATIO AND DIMENSIONS FROM IMAGE_1
+
+STYLE / THEME TRANSFER (FROM IMAGE_2 ONLY):
+- Apply the era, theme, mood, and atmosphere of Image_2
+- Change clothing only to match the theme of Image_2
+- Convert environment colors, lighting, textures, materials to match Image_2
+- Replace modern elements with theme-accurate ones
+- Do NOT copy pose or composition from Image_2
+
+RESTRICTIONS (STRICT):
+- NO face swap, NO pose change, NO skin change, NO hair change
+- NO identity change, NO extra people, NO text or logos or watermarks
+
+OUTPUT:
+- Ultra-realistic, cinematic render
+- MUST match Image_1 aspect ratio exactly
+- Image_1 photographed in the world, era, and style of Image_2`
 
 // ═══ CREDIT COST CALCULATOR ═══
 function getCreditCost(modelTier: string, resolution: string): number {
@@ -51,17 +49,13 @@ function getCreditCost(modelTier: string, resolution: string): number {
 
 // ═══ HELPER: Prepare Image Base64 ═══
 async function prepareImageBase64(input: string): Promise<string> {
-
   if (!input) throw new Error('Empty image input')
 
-  // Case 1: data URI — strip the prefix
   if (input.startsWith('data:')) {
     return input.split(',')[1]
   }
 
-  // Case 2: HTTP/HTTPS URL (Cloudinary etc) — fetch it
   if (input.startsWith('http://') || input.startsWith('https://')) {
-    console.log('Fetching image from URL, length:', input.length)
     const res = await fetch(input)
     if (!res.ok) throw new Error(`Failed to fetch image: ${res.status}`)
     const buffer = await res.arrayBuffer()
@@ -75,16 +69,58 @@ async function prepareImageBase64(input: string): Promise<string> {
     return btoa(binary)
   }
 
-  // Case 3: old Supabase storage path (no slash prefix,
-  // looks like "templates/email/uuid" with no extension)
-  if (!input.includes('.') && input.includes('/') && input.length < 200) {
-    throw new Error(`Old storage path detected: ${input.slice(0, 50)}`)
-  }
-
-  // Case 4: raw base64 (JPEG starts with /9j/, PNG etc)
-  // This is already clean base64 — use as-is
-  console.log('Using raw base64, length:', input.length)
+  // raw base64
   return input
+}
+
+// ═══ HELPER: Detect aspect ratio from base64 image ═══
+function detectAspectRatio(base64Data: string): string {
+  try {
+    // Decode enough bytes to read image dimensions
+    const binary = atob(base64Data.slice(0, 1024))
+    const bytes = new Uint8Array(binary.length)
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i)
+    }
+
+    let width = 0
+    let height = 0
+
+    // JPEG: FF D8
+    if (bytes[0] === 0xFF && bytes[1] === 0xD8) {
+      // Scan for SOF markers (FF C0, FF C1, FF C2)
+      const fullBinary = atob(base64Data.slice(0, 8192))
+      const fullBytes = new Uint8Array(fullBinary.length)
+      for (let i = 0; i < fullBinary.length; i++) fullBytes[i] = fullBinary.charCodeAt(i)
+      for (let i = 0; i < fullBytes.length - 8; i++) {
+        if (fullBytes[i] === 0xFF && (fullBytes[i+1] === 0xC0 || fullBytes[i+1] === 0xC1 || fullBytes[i+1] === 0xC2)) {
+          height = (fullBytes[i+5] << 8) | fullBytes[i+6]
+          width = (fullBytes[i+7] << 8) | fullBytes[i+8]
+          break
+        }
+      }
+    }
+    // PNG: 89 50 4E 47
+    else if (bytes[0] === 0x89 && bytes[1] === 0x50) {
+      width = (bytes[16] << 24) | (bytes[17] << 16) | (bytes[18] << 8) | bytes[19]
+      height = (bytes[20] << 24) | (bytes[21] << 16) | (bytes[22] << 8) | bytes[23]
+    }
+
+    if (width > 0 && height > 0) {
+      const ratio = width / height
+      if (ratio > 1.7) return '16:9'
+      if (ratio > 1.4) return '4:3'
+      if (ratio > 1.1) return '3:2'
+      if (ratio > 0.95) return '1:1'
+      if (ratio > 0.7) return '4:5'
+      if (ratio > 0.6) return '3:4'
+      if (ratio > 0.5) return '2:3'
+      return '9:16'
+    }
+  } catch (e) {
+    console.warn('Aspect ratio detection failed:', e)
+  }
+  return '1:1' // safe default
 }
 
 serve(async (req) => {
@@ -98,87 +134,53 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     )
 
-    // ═══ DETAILED LOGGING — STEP 1 ═══
     const rawBody = await req.text()
-    console.log('RAW BODY RECEIVED:', rawBody.slice(0, 500))
-
     let body: any
     try {
       body = JSON.parse(rawBody)
     } catch (e) {
-      console.error('JSON PARSE FAILED:', e)
       return new Response(
         JSON.stringify({ error: 'Invalid JSON body' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    console.log('PARSED FIELDS:', {
-      hasEmail: !!body?.email,
-      emailValue: body?.email,
-      hasSource: !!body?.sourceImageBase64,
-      sourceLength: body?.sourceImageBase64?.length,
-      hasTarget: !!body?.targetImageBase64,
-      targetLength: body?.targetImageBase64?.length,
-      hasTemplatePath: !!body?.targetTemplatePath,
-      resolution: body?.resolution,
-      allKeys: Object.keys(body || {})
-    })
-
     const {
       email,
-      sourceImageBase64,
-      targetImageBase64,
-      targetTemplatePath,
-      sourceMime,
-      targetMime,
+      userPhotoBase64,
+      templateImageBase64,
+      templateUrl,
+      userMime,
+      templateMime,
       resolution = '1K',
       aspectRatio,
-      swapMode = 'default',
       modelTier = 'nnn1',
     } = body
 
-    console.log('Request validation:', {
-      hasEmail: !!email,
-      hasSource: !!sourceImageBase64,
-      hasTargetBase64: !!targetImageBase64,
-      hasTargetPath: !!targetTemplatePath,
-    })
-
-    // ═══ SPECIFIC FIELD VALIDATION ═══
     if (!email) {
       return new Response(
-        JSON.stringify({ 
-          error: 'Missing email',
-          field: 'email' 
-        }),
+        JSON.stringify({ error: 'Missing email', field: 'email' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    if (!sourceImageBase64) {
+    if (!userPhotoBase64) {
       return new Response(
-        JSON.stringify({ 
-          error: 'Missing source image',
-          field: 'sourceImageBase64' 
-        }),
+        JSON.stringify({ error: 'Missing user photo', field: 'userPhotoBase64' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    if (!targetImageBase64 && !targetTemplatePath) {
+    if (!templateImageBase64 && !templateUrl) {
       return new Response(
-        JSON.stringify({ 
-          error: 'Missing target image or template path',
-          field: 'targetImageBase64' 
-        }),
+        JSON.stringify({ error: 'Missing template image', field: 'templateImageBase64' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
     const cleanEmail = email.toLowerCase().trim()
 
-    // Verify user exists and is approved
+    // Verify user
     const { data: user } = await supabase
       .from('waitlist_submissions')
       .select('credits, approved')
@@ -192,7 +194,6 @@ serve(async (req) => {
       )
     }
 
-    // Calculate credit cost based on model tier and resolution
     const creditCost = getCreditCost(modelTier, resolution)
 
     if ((user.credits ?? 0) < creditCost) {
@@ -202,7 +203,7 @@ serve(async (req) => {
       )
     }
 
-    // Deduct credits immediately
+    // Deduct credits
     const newCredits = (user.credits ?? creditCost) - creditCost
     await supabase
       .from('waitlist_submissions')
@@ -212,16 +213,16 @@ serve(async (req) => {
     // Log usage
     await supabase.from('tool_usage').insert({
       email: cleanEmail,
-      tool_name: 'face_swap',
+      tool_name: 'vibe_swap',
       credits_used: creditCost,
     })
 
-    // Create generation history record
+    // Create history record
     const { data: historyRecord } = await supabase
       .from('generation_history')
       .insert({
         email: cleanEmail,
-        tool_name: 'face_swap',
+        tool_name: 'vibe_swap',
         resolution,
         status: 'processing',
         credits_used: creditCost,
@@ -231,69 +232,38 @@ serve(async (req) => {
 
     const historyId = historyRecord?.id
 
-    // ═══ PREPARE IMAGES WITH HELPER FUNCTION ═══
-    let sourceClean: string
-    let targetClean: string
-    const sourceMimeType = sourceMime || 'image/jpeg'
-    const targetMimeType = targetMime || 'image/jpeg'
-
+    // Prepare user photo
+    let userClean: string
     try {
-      sourceClean = await prepareImageBase64(sourceImageBase64)
+      userClean = await prepareImageBase64(userPhotoBase64)
     } catch (err: any) {
-      // Refund credit
-      await supabase
-        .from('waitlist_submissions')
-        .update({ credits: newCredits + creditCost })
-        .eq('email', cleanEmail)
-
+      await supabase.from('waitlist_submissions').update({ credits: newCredits + creditCost }).eq('email', cleanEmail)
       if (historyId) {
-        await supabase
-          .from('generation_history')
-          .update({ status: 'failed', error_message: `Source image error: ${err.message}` })
-          .eq('id', historyId)
+        await supabase.from('generation_history').update({ status: 'failed', error_message: `User photo error: ${err.message}` }).eq('id', historyId)
       }
-
       return new Response(
-        JSON.stringify({ 
-          error: `Source image error: ${err.message}`,
-          refunded: true,
-          creditsLeft: newCredits + creditCost
-        }),
+        JSON.stringify({ error: `User photo error: ${err.message}`, refunded: true, creditsLeft: newCredits + creditCost }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
+    // Prepare template image
+    let templateClean: string
     try {
-      const targetImageSource = targetImageBase64 || targetTemplatePath
-      if (!targetImageSource) {
-        throw new Error('No target image provided')
-      }
-      targetClean = await prepareImageBase64(targetImageSource)
+      const templateSource = templateImageBase64 || templateUrl
+      templateClean = await prepareImageBase64(templateSource)
     } catch (err: any) {
-      // Refund credit
-      await supabase
-        .from('waitlist_submissions')
-        .update({ credits: newCredits + creditCost })
-        .eq('email', cleanEmail)
-
+      await supabase.from('waitlist_submissions').update({ credits: newCredits + creditCost }).eq('email', cleanEmail)
       if (historyId) {
-        await supabase
-          .from('generation_history')
-          .update({ status: 'failed', error_message: `Target image error: ${err.message}` })
-          .eq('id', historyId)
+        await supabase.from('generation_history').update({ status: 'failed', error_message: `Template image error: ${err.message}` }).eq('id', historyId)
       }
-
       return new Response(
-        JSON.stringify({ 
-          error: `Target image error: ${err.message}`,
-          refunded: true,
-          creditsLeft: newCredits + creditCost
-        }),
+        JSON.stringify({ error: `Template image error: ${err.message}`, refunded: true, creditsLeft: newCredits + creditCost }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    // Get API key from admin_settings
+    // Get API key
     const { data: apiKeySetting } = await supabase
       .from('admin_settings')
       .select('value')
@@ -303,52 +273,45 @@ serve(async (req) => {
     const apiKey = apiKeySetting?.value || Deno.env.get('GEMINI_API_KEY')
 
     if (!apiKey) {
-      // Refund
-      await supabase
-        .from('waitlist_submissions')
-        .update({ credits: newCredits + 1 })
-        .eq('email', cleanEmail)
-
+      await supabase.from('waitlist_submissions').update({ credits: newCredits + creditCost }).eq('email', cleanEmail)
       if (historyId) {
-        await supabase
-          .from('generation_history')
-          .update({ status: 'failed', error_message: 'API key not configured.' })
-          .eq('id', historyId)
+        await supabase.from('generation_history').update({ status: 'failed', error_message: 'API key not configured.' }).eq('id', historyId)
       }
-
       return new Response(
-        JSON.stringify({ error: 'API key not configured.', refunded: true, creditsLeft: newCredits + 1 }),
+        JSON.stringify({ error: 'API key not configured.', refunded: true, creditsLeft: newCredits + creditCost }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    // Get prompt from admin_settings
+    // Get vibe swap prompt from admin_settings
     const { data: promptSetting } = await supabase
       .from('admin_settings')
       .select('value')
-      .eq('key', 'face_swap_prompt')
+      .eq('key', 'vibe_swap_prompt')
       .single()
 
-    const basePrompt = promptSetting?.value || DEFAULT_PROMPT
-    const suffix = SWAP_MODE_SUFFIXES[swapMode] || ''
-    let fullPrompt = basePrompt + suffix
+    const basePrompt = promptSetting?.value || DEFAULT_VIBE_PROMPT
 
-    if (aspectRatio) {
-      fullPrompt += `\n\nGenerate the output image with aspect ratio ${aspectRatio}.`
+    // Auto-detect aspect ratio from user's photo if not provided
+    let finalAspectRatio = aspectRatio
+    if (!finalAspectRatio || finalAspectRatio === 'auto' || finalAspectRatio === '') {
+      finalAspectRatio = detectAspectRatio(userClean)
+      console.log('Auto-detected aspect ratio:', finalAspectRatio)
     }
 
-    // Map resolution — normalize lowercase from frontend to uppercase for Gemini
-    const sizeMap: Record<string, string> = { '1k': '1K', '2k': '2K', '4k': '4K', '1K': '1K', '2K': '2K', '4K': '4K' }
-    const imageSize = sizeMap[resolution] || '1K'
+    // Build prompt
+    let fullPrompt = basePrompt
+    if (finalAspectRatio) {
+      fullPrompt += `\n\nGenerate the output image with aspect ratio ${finalAspectRatio}.`
+    }
 
-    // Get model from admin_settings based on tier
+    // Get model
     const modelKeyMap: Record<string, string> = {
       nnn1: 'model_nnn1',
       nnn1_pro: 'model_nnn1_pro',
       nnn1_pro_max: 'model_nnn1_pro_max'
     }
     const modelKey = modelKeyMap[modelTier] || 'model_nnn1_pro'
-    
     const { data: modelSetting } = await supabase
       .from('admin_settings')
       .select('value')
@@ -356,26 +319,21 @@ serve(async (req) => {
       .single()
 
     const model = modelSetting?.value || 'gemini-3.1-flash-image-preview'
-    
+    const sizeMap: Record<string, string> = { '1k': '1K', '2k': '2K', '4k': '4K', '1K': '1K', '2K': '2K', '4K': '4K' }
+    const imageSize = sizeMap[resolution] || '1K'
+
+    const userMimeType = userMime || 'image/jpeg'
+    const templateMimeType = templateMime || 'image/jpeg'
+
     const geminiBody = {
       contents: [
         {
           role: 'user',
           parts: [
-            { text: 'Picture 1 (User\'s face):' },
-            {
-              inlineData: {
-                mimeType: sourceMimeType,
-                data: sourceClean,
-              },
-            },
-            { text: 'Picture 2 (Template/Background):' },
-            {
-              inlineData: {
-                mimeType: targetMimeType,
-                data: targetClean,
-              },
-            },
+            { text: "Image_1 (User's photo - preserve identity, pose, position):" },
+            { inlineData: { mimeType: userMimeType, data: userClean } },
+            { text: 'Image_2 (Theme/Style reference - extract style only):' },
+            { inlineData: { mimeType: templateMimeType, data: templateClean } },
             { text: fullPrompt },
           ],
         },
@@ -434,7 +392,6 @@ serve(async (req) => {
     const resultId = crypto.randomUUID()
     const resultPath = `results/${cleanEmail}/${resultId}.png`
 
-    // Decode base64 and upload
     const binaryStr = atob(images[0])
     const bytes = new Uint8Array(binaryStr.length)
     for (let i = 0; i < binaryStr.length; i++) {
@@ -448,18 +405,15 @@ serve(async (req) => {
         upsert: false,
       })
 
-    // Update generation history
+    // Update history
     if (historyId) {
       await supabase
         .from('generation_history')
-        .update({
-          status: 'completed',
-          result_path: resultPath,
-        })
+        .update({ status: 'completed', result_path: resultPath })
         .eq('id', historyId)
     }
 
-    // Keep only last 10 history records per user
+    // Trim history to last 10
     const { data: allHistory } = await supabase
       .from('generation_history')
       .select('id, created_at')
@@ -468,10 +422,7 @@ serve(async (req) => {
 
     if (allHistory && allHistory.length > 10) {
       const toDelete = allHistory.slice(10).map((h: any) => h.id)
-      await supabase
-        .from('generation_history')
-        .delete()
-        .in('id', toDelete)
+      await supabase.from('generation_history').delete().in('id', toDelete)
     }
 
     return new Response(
@@ -480,11 +431,12 @@ serve(async (req) => {
         images,
         resultUrl: resultPath,
         creditsLeft: newCredits,
+        detectedAspectRatio: finalAspectRatio,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   } catch (err) {
-    console.error('Face swap error:', err)
+    console.error('Vibe swap error:', err)
     return new Response(
       JSON.stringify({ error: 'Something went wrong.' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

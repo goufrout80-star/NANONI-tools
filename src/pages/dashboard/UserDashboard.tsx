@@ -5,7 +5,7 @@ import { useAuth } from '@/context/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { useNavigate } from 'react-router-dom'
 import { useToast } from '@/hooks/use-toast'
-import { Camera, Lock, Sparkles } from 'lucide-react'
+import { Camera, Lock, Sparkles, Wand2 } from 'lucide-react'
 
 interface ToolConfig {
   tool_name: string
@@ -62,9 +62,16 @@ export default function UserDashboard() {
     }
   }, [session?.email])
 
+  const TOOL_ROUTES: Record<string, string> = {
+    face_swap: '/dashboard/faceswap',
+    ai_generate: '/dashboard/ai-generate',
+    vibe_swap: '/dashboard/vibe-swap',
+  }
+
   const handleToolClick = (toolName: string, isActive: boolean) => {
-    if (toolName === 'face_swap' && isActive) {
-      navigate('/dashboard/faceswap')
+    const route = TOOL_ROUTES[toolName]
+    if (route && isActive) {
+      navigate(route)
     } else {
       toast({
         title: 'Coming Soon!',
@@ -74,7 +81,9 @@ export default function UserDashboard() {
   }
 
   const faceSwapTool = tools.find((t) => t.tool_name === 'face_swap')
-  const otherTools = tools.filter((t) => t.tool_name !== 'face_swap')
+  const aiGenerateTool = tools.find((t) => t.tool_name === 'ai_generate')
+  const vibeSwapTool = tools.find((t) => t.tool_name === 'vibe_swap')
+  const otherTools = tools.filter((t) => !['face_swap', 'ai_generate', 'vibe_swap'].includes(t.tool_name))
 
   return (
     <UserLayout title="Dashboard">
@@ -146,6 +155,62 @@ export default function UserDashboard() {
               </div>
             )}
             <div className="absolute -bottom-8 -right-8 w-32 h-32 rounded-full bg-orange/10 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+          </div>
+        )}
+
+        {/* AI Generate — Featured */}
+        {aiGenerateTool && (
+          <div
+            onClick={() => handleToolClick('ai_generate', aiGenerateTool.is_active)}
+            className="relative col-span-1 overflow-hidden rounded-xl border border-purple/20 bg-gradient-to-br from-purple/10 to-emerald-500/5 p-5 cursor-pointer hover:scale-[1.01] hover:shadow-xl hover:shadow-purple/5 transition-all duration-300 group"
+          >
+            <div className="flex items-start justify-between">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-purple" />
+                  <h4 className="text-base font-bold text-foreground">AI Generate</h4>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple/20 text-purple border border-purple/30">
+                    Text to Image
+                  </span>
+                </div>
+                <p className="text-sm text-soft-gray">Describe any image and bring it to life with AI</p>
+              </div>
+              <div className="text-2xl opacity-60 group-hover:opacity-100 group-hover:scale-110 transition-all duration-300">🤖</div>
+            </div>
+            {!aiGenerateTool.is_active && (
+              <div className="absolute inset-0 bg-background/60 backdrop-blur-sm flex items-center justify-center rounded-xl">
+                <span className="text-sm font-semibold text-soft-gray">Coming Soon</span>
+              </div>
+            )}
+            <div className="absolute -bottom-8 -right-8 w-28 h-28 rounded-full bg-purple/10 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+          </div>
+        )}
+
+        {/* Vibe Swap — Featured */}
+        {vibeSwapTool && (
+          <div
+            onClick={() => handleToolClick('vibe_swap', vibeSwapTool.is_active)}
+            className="relative col-span-1 overflow-hidden rounded-xl border border-teal-500/20 bg-gradient-to-br from-teal-500/10 to-purple/5 p-5 cursor-pointer hover:scale-[1.01] hover:shadow-xl hover:shadow-teal-500/5 transition-all duration-300 group"
+          >
+            <div className="flex items-start justify-between">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Wand2 className="w-5 h-5 text-teal-400" />
+                  <h4 className="text-base font-bold text-foreground">Vibe Swap</h4>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-500/20 text-teal-400 border border-teal-500/30">
+                    Style Transfer
+                  </span>
+                </div>
+                <p className="text-sm text-soft-gray">Transfer any era or aesthetic onto your photo</p>
+              </div>
+              <div className="text-2xl opacity-60 group-hover:opacity-100 group-hover:scale-110 transition-all duration-300">🎨</div>
+            </div>
+            {!vibeSwapTool.is_active && (
+              <div className="absolute inset-0 bg-background/60 backdrop-blur-sm flex items-center justify-center rounded-xl">
+                <span className="text-sm font-semibold text-soft-gray">Coming Soon</span>
+              </div>
+            )}
+            <div className="absolute -bottom-8 -right-8 w-28 h-28 rounded-full bg-teal-500/10 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
           </div>
         )}
 

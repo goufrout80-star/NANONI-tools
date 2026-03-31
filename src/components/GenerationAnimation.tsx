@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Download, RotateCcw, X, CheckCircle, AlertCircle, Coins } from 'lucide-react'
+import { Download, RotateCcw, X, CheckCircle, AlertCircle, Coins, Maximize2 } from 'lucide-react'
 
 const STAGES = [
   'Analyzing faces...',
@@ -22,6 +22,7 @@ interface GenerationAnimationProps {
   onDownload?: () => void
   onRetry?: () => void
   onClose?: () => void
+  onFullscreen?: (imageUrl: string) => void
 }
 
 // Background particles
@@ -122,6 +123,7 @@ export default function GenerationAnimation({
   onDownload,
   onRetry,
   onClose,
+  onFullscreen,
 }: GenerationAnimationProps) {
   const [stage, setStage] = useState(0)
   const [showRefund, setShowRefund] = useState(false)
@@ -364,9 +366,15 @@ export default function GenerationAnimation({
                 initial={{ scale: 0.8, y: 20 }}
                 animate={{ scale: 1, y: 0 }}
                 transition={{ delay: 0.3, type: 'spring' }}
-                className="w-full rounded-xl overflow-hidden border border-white/10 shadow-2xl mb-4"
+                className="w-full rounded-xl overflow-hidden border border-white/10 shadow-2xl mb-4 relative group cursor-zoom-in"
+                onClick={() => onFullscreen && resultImage && onFullscreen(resultImage)}
               >
                 <img src={resultImage} alt="Result" className="w-full object-contain max-h-[300px]" />
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-start justify-end p-2">
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg bg-black/60">
+                    <Maximize2 className="w-4 h-4 text-white" />
+                  </div>
+                </div>
               </motion.div>
 
               <motion.div

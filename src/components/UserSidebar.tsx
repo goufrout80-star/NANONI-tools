@@ -1,16 +1,21 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { ChevronLeft, ChevronRight, Sun, Moon, LogOut, Home, Camera, Settings, LayoutGrid } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Sun, Moon, LogOut, Home, Camera, Settings, LayoutGrid, Sparkles, Wand2, Clock } from 'lucide-react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import { useSidebar } from '@/hooks/useSidebar'
+import { supabase } from '@/lib/supabase'
 
 const navItems = [
   { label: 'Dashboard', icon: Home, path: '/dashboard', tutorialId: undefined },
   { label: 'Tools', icon: LayoutGrid, path: '/dashboard/tools', tutorialId: 'tools-nav' },
   { label: 'Face Swap', icon: Camera, path: '/dashboard/faceswap', tutorialId: undefined },
+  { label: 'AI Generate', icon: Sparkles, path: '/dashboard/ai-generate', tutorialId: undefined },
+  { label: 'Vibe Swap', icon: Wand2, path: '/dashboard/vibe-swap', tutorialId: undefined },
+  { label: 'History', icon: Clock, path: '/dashboard/history', tutorialId: undefined },
   { label: 'Settings', icon: Settings, path: '/dashboard/settings', tutorialId: 'settings-nav' },
 ]
+
 
 export function UserSidebar() {
   const { isExpanded, setExpanded, toggle } = useSidebar()
@@ -25,6 +30,8 @@ export function UserSidebar() {
     return false
   })
 
+  const [historyCount, setHistoryCount] = useState<number | null>(null)
+
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768)
     checkMobile()
@@ -37,9 +44,24 @@ export function UserSidebar() {
     localStorage.setItem('nanoni-theme', light ? 'light' : 'dark')
   }, [light])
 
+  useEffect(() => {
+    if (session?.email) loadHistoryCount()
+  }, [session?.email])
+
   const handleLogout = () => {
     logout()
     navigate('/login')
+  }
+
+  const loadHistoryCount = async () => {
+    if (!session?.email) return
+    try {
+      const { count } = await supabase
+        .from('generation_history')
+        .select('*', { count: 'exact', head: true })
+        .eq('email', session.email.toLowerCase().trim())
+      if (count !== null) setHistoryCount(count)
+    } catch { /* ignore */ }
   }
 
   const sidebarWidth = isMobile ? (isExpanded ? 240 : 0) : (isExpanded ? 240 : 56)
@@ -81,9 +103,10 @@ export function UserSidebar() {
         </div>
 
         {/* Navigation */}
-        <div className="flex-1 flex flex-col gap-1 px-2 pt-4">
+        <div className="flex-1 flex flex-col gap-1 px-2 pt-4 overflow-y-auto">
           {navItems.map(({ label, icon: Icon, path, tutorialId }) => {
             const active = isActive(path)
+            const isHistory = path === '/dashboard/history'
             return (
               <Link
                 key={path}
@@ -97,7 +120,17 @@ export function UserSidebar() {
                   }`}
               >
                 <Icon className={`w-4 h-4 flex-shrink-0 ${active ? 'text-orange' : 'group-hover:text-orange/70'}`} />
-                {isExpanded && <span className="text-[13px] font-medium whitespace-nowrap">{label}</span>}
+                {isExpanded && <span className="text-[13px] font-medium whitespace-nowrap flex-1">{label}</span>}
+                {isExpanded && isHistory && historyCount !== null && historyCount > 0 && (
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-white/10 text-soft-gray/60 flex-shrink-0">
+                    {historyCount > 99 ? '99+' : historyCount}
+                  </span>
+                )}
+                {!isExpanded && isHistory && historyCount !== null && historyCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-orange text-white text-[8px] font-black flex items-center justify-center">
+                    {historyCount > 9 ? '9+' : historyCount}
+                  </span>
+                )}
                 {active && !isExpanded && (
                   <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-5 bg-orange rounded-r" />
                 )}
@@ -163,6 +196,7 @@ export function UserSidebar() {
           {isExpanded ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
         </motion.button>
       )}
+
     </>
   )
 }

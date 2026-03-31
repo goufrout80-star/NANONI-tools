@@ -17,11 +17,18 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     )
 
-    const { email, toolName } = await req.json()
+    const { email, toolName, creditCost = 1 } = await req.json()
 
     if (!email || !toolName) {
       return new Response(
         JSON.stringify({ error: 'Missing email or toolName' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    if (typeof creditCost !== 'number' || creditCost < 1) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid creditCost' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -42,15 +49,15 @@ serve(async (req) => {
       )
     }
 
-    if ((user.credits ?? 0) <= 0) {
+    if ((user.credits ?? 0) < creditCost) {
       return new Response(
-        JSON.stringify({ error: 'No credits remaining', creditsLeft: 0 }),
+        JSON.stringify({ error: `Insufficient credits. Need ${creditCost}, have ${user.credits ?? 0}.`, creditsLeft: user.credits ?? 0 }),
         { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    // Deduct 1 credit
-    const newCredits = (user.credits ?? 1) - 1
+    // Deduct credits
+    const newCredits = (user.credits ?? creditCost) - creditCost
     const { error: updateError } = await supabase
       .from('waitlist_submissions')
       .update({ credits: newCredits })
@@ -64,7 +71,7 @@ serve(async (req) => {
     await supabase.from('tool_usage').insert({
       email: cleanEmail,
       tool_name: toolName,
-      credits_used: 1,
+      credits_used: creditCost,
     })
 
     return new Response(

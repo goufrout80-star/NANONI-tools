@@ -27,7 +27,10 @@ import AdminSettings from "./pages/admin/AdminSettings";
 import UserDashboard from "./pages/dashboard/UserDashboard";
 import ToolsSelection from "./pages/dashboard/ToolsSelection";
 import FaceSwap from "./pages/dashboard/FaceSwap";
+import AIGenerate from "./pages/dashboard/AIGenerate";
+import VibeSwap from "./pages/dashboard/VibeSwap";
 import UserSettings from "./pages/dashboard/UserSettings";
+import History from "./pages/dashboard/History";
 
 const queryClient = new QueryClient();
 
@@ -58,7 +61,10 @@ const App = () => (
               <Route path="/dashboard" element={<ProtectedRoute requiredRole="user"><UserDashboard /></ProtectedRoute>} />
               <Route path="/dashboard/tools" element={<ProtectedRoute requiredRole="user"><ToolsSelection /></ProtectedRoute>} />
               <Route path="/dashboard/faceswap" element={<ProtectedRoute requiredRole="user"><FaceSwap /></ProtectedRoute>} />
+              <Route path="/dashboard/ai-generate" element={<ProtectedRoute requiredRole="user"><AIGenerate /></ProtectedRoute>} />
+              <Route path="/dashboard/vibe-swap" element={<ProtectedRoute requiredRole="user"><VibeSwap /></ProtectedRoute>} />
               <Route path="/dashboard/settings" element={<ProtectedRoute requiredRole="user"><UserSettings /></ProtectedRoute>} />
+              <Route path="/dashboard/history" element={<ProtectedRoute requiredRole="user"><History /></ProtectedRoute>} />
 
               {/* 404 */}
               <Route path="*" element={<Layout><NotFound /></Layout>} />

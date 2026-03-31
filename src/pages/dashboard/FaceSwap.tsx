@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { UserLayout } from '@/components/UserLayout'
 import { useAuth } from '@/context/AuthContext'
@@ -96,6 +96,17 @@ export default function FaceSwap() {
   const [swapMode, setSwapMode] = useState<SwapMode>('default')
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [showModeDropdown, setShowModeDropdown] = useState(false)
+  const [modelTier, setModelTier] = useState<'nnn1' | 'nnn1_pro' | 'nnn1_pro_max'>('nnn1')
+
+  // Credit costs table
+  const CREDIT_COST: Record<string, Record<string, number>> = {
+    nnn1:        { '1K': 3,  '2K': 5,  '4K': 8  },
+    nnn1_pro:    { '1K': 6,  '2K': 10, '4K': 16 },
+    nnn1_pro_max:{ '1K': 12, '2K': 20, '4K': 32 },
+  }
+
+  const creditCost = CREDIT_COST[modelTier]?.[resolution] ?? 3
+  const notEnoughCredits = (session?.credits ?? 0) < creditCost
 
   // Processing state
   const [processing, setProcessing] = useState(false)
@@ -116,7 +127,7 @@ export default function FaceSwap() {
   const [isDragging, setIsDragging] = useState(false)
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
 
-  const noCredits = (session?.credits ?? 0) <= 0
+  const noCredits = notEnoughCredits
   const hasSource = !!sourcePreview
   const hasTarget = !!targetPreview || !!selectedTemplate
   const canGenerate = hasSource && hasTarget && !processing && !noCredits
@@ -335,6 +346,7 @@ export default function FaceSwap() {
           sourceMime: sourceFile.type,
           targetMime: targetFile?.type,
           resolution,
+          modelTier,
           aspectRatio: aspectRatio === 'original' ? undefined : aspectRatio,
           swapMode,
         },
@@ -371,12 +383,27 @@ export default function FaceSwap() {
     }
   }
 
+  const downloadResult = async (imageUrl: string) => {
+    try {
+      const response = await fetch(imageUrl)
+      const blob = await response.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `nanoni-faceswap-${Date.now()}.jpg`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error('Download failed:', error)
+      window.open(imageUrl, '_blank')
+    }
+  }
+
   const handleDownload = () => {
     if (!resultImage) return
-    const a = document.createElement('a')
-    a.href = resultImage
-    a.download = `nanoni-faceswap-${Date.now()}.png`
-    a.click()
+    downloadResult(resultImage)
   }
 
   const handleRetry = () => {
@@ -527,7 +554,7 @@ export default function FaceSwap() {
           </div>
           <div data-tutorial="credits-indicator" className="flex items-center gap-2 text-xs">
             <Zap className="w-3.5 h-3.5 text-orange" />
-            <span className="text-soft-gray">1 credit per generation</span>
+            <span className="text-soft-gray">{creditCost} {creditCost === 1 ? 'credit' : 'credits'} per generation</span>
             <span className={`font-bold ${(session?.credits ?? 0) < 3 ? 'text-orange' : 'text-foreground'}`}>
               · {session?.credits ?? 0} remaining
             </span>
@@ -562,6 +589,7 @@ export default function FaceSwap() {
             onDownload={handleDownload}
             onRetry={handleRetry}
             onClose={handleCloseAnimation}
+            onFullscreen={openFullscreen}
           />
 
           {/* ═══ LEFT COLUMN — Source Face ═══ */}
@@ -585,6 +613,92 @@ export default function FaceSwap() {
               <span className="text-[10px] font-bold px-3 py-1.5 rounded-full bg-purple/10 text-purple border border-purple/20">
                 NNN v1
               </span>
+            </div>
+
+            {/* Model Tier */}
+            <div className="rounded-xl border border-white/5 bg-card p-4 space-y-3">
+              <label className="text-[10px] uppercase tracking-[2px] text-soft-gray font-bold block">Model Tier</label>
+              <div className="grid grid-cols-2 gap-2">
+                {/* NNN v1 */}
+                <button
+                  onClick={() => setModelTier('nnn1')}
+                  className={`relative p-3 rounded-lg border transition-all ${
+                    modelTier === 'nnn1'
+                      ? 'bg-orange/10 border-orange shadow-lg shadow-orange/20'
+                      : 'bg-white/5 border-white/10 hover:bg-white/10'
+                  }`}
+                >
+                  <div className="text-left">
+                    <p className={`text-xs font-bold mb-0.5 ${
+                      modelTier === 'nnn1' ? 'text-orange' : 'text-foreground'
+                    }`}>NNN v1</p>
+                    <p className="text-[9px] text-soft-gray/60 mb-2">Fast & efficient</p>
+                    <div className="inline-block px-2 py-0.5 rounded-full bg-white/5 text-[8px] font-bold text-soft-gray">
+                      {CREDIT_COST.nnn1[resolution]} cr
+                    </div>
+                  </div>
+                </button>
+
+                {/* NNN v1 Pro */}
+                <button
+                  onClick={() => setModelTier('nnn1_pro')}
+                  className={`relative p-3 rounded-lg border transition-all ${
+                    modelTier === 'nnn1_pro'
+                      ? 'bg-purple/10 border-purple shadow-lg shadow-purple/20'
+                      : 'bg-white/5 border-white/10 hover:bg-white/10'
+                  }`}
+                >
+                  <div className="text-left">
+                    <p className={`text-xs font-bold mb-0.5 ${
+                      modelTier === 'nnn1_pro' ? 'text-purple' : 'text-foreground'
+                    }`}>NNN v1 Pro</p>
+                    <p className="text-[9px] text-soft-gray/60 mb-2">Higher quality</p>
+                    <div className="inline-block px-2 py-0.5 rounded-full bg-white/5 text-[8px] font-bold text-soft-gray">
+                      {CREDIT_COST.nnn1_pro[resolution]} cr
+                    </div>
+                  </div>
+                </button>
+
+                {/* NNN v1 Pro Max */}
+                <button
+                  onClick={() => setModelTier('nnn1_pro_max')}
+                  style={modelTier === 'nnn1_pro_max'
+                    ? { background: 'rgba(122,111,255,0.15)', border: '2px solid #7A6FFF', boxShadow: '0 0 20px rgba(122,111,255,0.2)' }
+                    : { background: 'rgba(122,111,255,0.08)', border: '1px solid rgba(122,111,255,0.25)' }
+                  }
+                  className="relative p-3 rounded-lg transition-all hover:shadow-[0_0_16px_rgba(122,111,255,0.2)] hover:border-[#7A6FFF]"
+                >
+                  <div className="absolute top-1 right-1">
+                    <span style={{ background: 'linear-gradient(135deg,#7A6FFF,#9B8FFF)' }} className="px-2 py-0.5 rounded-full text-[7px] font-black text-white">PREMIUM</span>
+                  </div>
+                  <div className="text-left">
+                    <p className={`text-xs font-bold mb-0.5 ${
+                      modelTier === 'nnn1_pro_max' ? 'text-[#7A6FFF]' : 'text-white'
+                    }`}>NNN v1 Pro Max</p>
+                    <p className="text-[9px] text-soft-gray/60 mb-2">Best results</p>
+                    <div className="inline-block px-2 py-0.5 rounded-full text-[8px] font-bold text-[#7A6FFF]" style={{ background: 'rgba(122,111,255,0.15)', border: '1px solid rgba(122,111,255,0.3)' }}>
+                      {CREDIT_COST.nnn1_pro_max[resolution]} cr
+                    </div>
+                  </div>
+                </button>
+
+                {/* NNN v1 Pro Ultra — Coming Soon */}
+                <div
+                  style={{ opacity: 0.45, cursor: 'not-allowed', background: 'rgba(122,111,255,0.05)', border: '1px solid rgba(122,111,255,0.15)' }}
+                  className="relative p-3 rounded-lg"
+                >
+                  <div className="absolute top-1 right-1">
+                    <span style={{ background: 'rgba(122,111,255,0.25)', border: '1px solid rgba(122,111,255,0.4)' }} className="px-2 py-0.5 rounded-full text-[7px] font-black text-[#9B8FFF]">SOON</span>
+                  </div>
+                  <div className="text-left">
+                    <p className="text-xs font-bold mb-0.5 text-[#7A6FFF]/60">NNN v1 Pro Ultra</p>
+                    <p className="text-[9px] text-soft-gray/40 mb-2">Coming Soon</p>
+                    <div className="inline-block px-2 py-0.5 rounded-full text-[8px] font-bold text-soft-gray/30" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                      — cr
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Resolution */}
@@ -700,11 +814,29 @@ export default function FaceSwap() {
 
             {/* Credits + Generate button */}
             <div className="space-y-3 pt-2">
-              <div data-tutorial="credits-indicator-center" className="flex items-center justify-between text-xs px-1">
-                <span className="text-soft-gray">Cost: <span className="text-orange font-bold">1 credit</span></span>
-                <span className={`font-bold ${(session?.credits ?? 0) < 3 ? 'text-orange' : 'text-soft-gray'}`}>
-                  {session?.credits ?? 0} credits left
-                </span>
+              <div
+                data-tutorial="credits-indicator-center"
+                style={{
+                  background: notEnoughCredits ? 'rgba(239,68,68,0.08)' : 'rgba(255,61,0,0.08)',
+                  border: `1px solid ${notEnoughCredits ? 'rgba(239,68,68,0.25)' : 'rgba(255,61,0,0.2)'}`,
+                  borderRadius: 12,
+                  padding: '12px 16px',
+                }}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-soft-gray">This generation will cost:</span>
+                  <span className="text-xs font-black" style={{ color: notEnoughCredits ? '#ef4444' : '#FF3D00' }}>
+                    ⚡ {creditCost} credits
+                  </span>
+                </div>
+                <div className="flex items-center justify-between mt-1">
+                  <span className="text-[10px]" style={{ color: notEnoughCredits ? '#ef4444' : 'rgba(255,61,0,0.7)' }}>
+                    {resolution} · {modelTier === 'nnn1' ? 'NNN v1' : modelTier === 'nnn1_pro' ? 'NNN v1 Pro' : 'NNN v1 Pro Max'}
+                  </span>
+                  <span className={`text-[10px] font-bold ${notEnoughCredits ? 'text-red-400' : 'text-soft-gray'}`}>
+                    {notEnoughCredits ? 'Not enough credits' : `${session?.credits ?? 0} remaining`}
+                  </span>
+                </div>
               </div>
 
               <button
@@ -715,7 +847,7 @@ export default function FaceSwap() {
               >
                 <Sparkles className="w-5 h-5" />
                 Generate Face Swap
-                <span className="text-xs font-normal opacity-70">— 1 credit</span>
+                <span className="text-xs font-normal opacity-70">— {creditCost} {creditCost === 1 ? 'credit' : 'credits'}</span>
               </button>
             </div>
           </div>
@@ -932,13 +1064,12 @@ export default function FaceSwap() {
                 )}
 
                 <div className="flex gap-2">
-                  <a
-                    href={historyModalItem.resultUrl}
-                    download={`nanoni-${historyModalItem.id}.png`}
+                  <button
+                    onClick={() => historyModalItem.resultUrl && downloadResult(historyModalItem.resultUrl)}
                     className="flex-1 py-2.5 bg-orange text-white font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-orange/90 transition-colors text-sm"
                   >
                     <Download className="w-4 h-4" /> Download
-                  </a>
+                  </button>
                   <button
                     onClick={() => {
                       if (historyModalItem.resultUrl) {
@@ -1005,7 +1136,7 @@ export default function FaceSwap() {
                   </button>
                   {/* Download */}
                   <button
-                    onClick={(e) => { e.stopPropagation(); const a = document.createElement('a'); a.href = fullscreenImage; a.download = `nanoni-faceswap-${Date.now()}.png`; a.click(); }}
+                    onClick={(e) => { e.stopPropagation(); if (fullscreenImage) downloadResult(fullscreenImage); }}
                     className="w-8 h-8 rounded-lg bg-white/8 border border-white/10 flex items-center justify-center text-white hover:bg-orange/15 hover:border-orange/30 transition-colors"
                     title="Download"
                   >
