@@ -239,6 +239,9 @@ serve(async (req) => {
 </body>
 </html>`
 
+    console.log('Attempting to send email to:', cleanEmail)
+    console.log('Has RESEND_API_KEY:', !!Deno.env.get('RESEND_API_KEY'))
+
     const resendRes = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -253,9 +256,15 @@ serve(async (req) => {
       }),
     })
 
+    const resendData = await resendRes.json()
+    console.log('Resend API response:', resendData)
+
     if (!resendRes.ok) {
-      throw new Error('Failed to send email')
+      console.error('Resend API error:', resendData)
+      throw new Error(`Failed to send email: ${JSON.stringify(resendData)}`)
     }
+
+    console.log('Email sent successfully to:', cleanEmail)
 
     // ═══ AUDIT LOG ═══
     await supabase.from('audit_log').insert({
