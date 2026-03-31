@@ -25,6 +25,22 @@ export default function Waitlist() {
   const [captchaError, setCaptchaError] = useState('');
 
   useEffect(() => {
+    // Update page meta for SEO
+    document.title = "Join the Waitlist — NANONI Studio";
+    
+    const metaDesc = document.querySelector('meta[name="description"]');
+    if (metaDesc) {
+      metaDesc.setAttribute(
+        'content',
+        'Join the NANONI Studio waitlist for early access to 19 AI creative tools. Be the first to try Face Swap, Brand DNA, PostFlow and more.'
+      );
+    }
+
+    const canonical = document.querySelector('link[rel="canonical"]');
+    if (canonical) {
+      canonical.setAttribute('href', 'https://nanoni.studio/waitlist');
+    }
+
     const fetchCount = async () => {
       try {
         const { count: currentCount } = await supabase
