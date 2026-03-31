@@ -38,87 +38,51 @@ const SWAP_MODE_SUFFIXES: Record<string, string> = {
 
 const DEFAULT_PROMPT = `Make the person's face from picture number 1 replace the face in picture number 2. You can change the clothes but only one thing: don't change the hairstyle or anything about the character from picture number 1. Keep the same face of the person from picture one, don't change anything about their skin or face. Change the position of the person to make the picture look natural and well composed. Picture 1 is the user's face photo. Picture 2 is the template/background image. Create the final image with the face from picture 1 placed onto picture 2's scene/pose.`
 
-// ═══ HELPER: Prepare Image Base64 ═══
-async function prepareImageBase64(input: string): Promise<string> {
-
-  if (!input) throw new Error('Empty image input')
-
-  // Case 1: data URI — strip the prefix
-  if (input.startsWith('data:')) {
-    return input.split(',')[1]
+serve(async (req: Request) => {
+  // Add CORS headers to all responses
+  const corsResponse = (body: any, status: number = 200) => {
+    return new Response(JSON.stringify(body), {
+      status,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
   }
 
-  // Case 2: HTTP/HTTPS URL (Cloudinary etc) — fetch it
-  if (input.startsWith('http://') || input.startsWith('https://')) {
-    console.log('Fetching image from URL, length:', input.length)
-    const res = await fetch(input)
-    if (!res.ok) throw new Error(`Failed to fetch image: ${res.status}`)
-    const buffer = await res.arrayBuffer()
-    const bytes = new Uint8Array(buffer)
-    let binary = ''
-    const chunkSize = 8192
-    for (let i = 0; i < bytes.length; i += chunkSize) {
-      const chunk = bytes.subarray(i, i + chunkSize)
-      binary += String.fromCharCode(...chunk)
-    }
-    return btoa(binary)
-  }
-
-  // Case 3: old Supabase storage path (no slash prefix,
-  // looks like "templates/email/uuid" with no extension)
-  if (!input.includes('.') && input.includes('/') && input.length < 200) {
-    throw new Error(`Old storage path detected: ${input.slice(0, 50)}`)
-  }
-
-  // Case 4: raw base64 (JPEG starts with /9j/, PNG etc)
-  // This is already clean base64 — use as-is
-  console.log('Using raw base64, length:', input.length)
-  return input
-}
-
-serve(async (req) => {
+  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response(null, { 
+      status: 200,
+      headers: corsHeaders 
+    })
   }
 
   try {
+    const body = await req.json()
+    
+    // Add detailed logging for debugging
+    console.log('Received body:', 
+      JSON.stringify({
+        hasEmail: !!body.email,
+        hasSource: !!body.sourceImageBase64,
+        hasTarget: !!body.targetImageBase64,
+        hasTemplatePath: !!body.targetTemplatePath,
+        hasCloudinaryUrl: !!body.targetCloudinaryUrl,
+        resolution: body.resolution,
+        swapMode: body.swapMode,
+        aspectRatio: body.aspectRatio
+      })
+    )
+
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     )
-
-    // ═══ DETAILED LOGGING — STEP 1 ═══
-    const rawBody = await req.text()
-    console.log('RAW BODY RECEIVED:', rawBody.slice(0, 500))
-
-    let body: any
-    try {
-      body = JSON.parse(rawBody)
-    } catch (e) {
-      console.error('JSON PARSE FAILED:', e)
-      return new Response(
-        JSON.stringify({ error: 'Invalid JSON body' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    console.log('PARSED FIELDS:', {
-      hasEmail: !!body?.email,
-      emailValue: body?.email,
-      hasSource: !!body?.sourceImageBase64,
-      sourceLength: body?.sourceImageBase64?.length,
-      hasTarget: !!body?.targetImageBase64,
-      targetLength: body?.targetImageBase64?.length,
-      hasTemplatePath: !!body?.targetTemplatePath,
-      resolution: body?.resolution,
-      allKeys: Object.keys(body || {})
-    })
 
     const {
       email,
       sourceImageBase64,
       targetImageBase64,
       targetTemplatePath,
+      targetCloudinaryUrl,
       sourceMime,
       targetMime,
       resolution = '1K',
@@ -126,41 +90,28 @@ serve(async (req) => {
       swapMode = 'default',
     } = body
 
-    console.log('Request validation:', {
-      hasEmail: !!email,
-      hasSource: !!sourceImageBase64,
-      hasTargetBase64: !!targetImageBase64,
-      hasTargetPath: !!targetTemplatePath,
-    })
+    let targetImage = targetImageBase64 
+      || targetTemplatePath 
+      || targetCloudinaryUrl
 
-    // ═══ SPECIFIC FIELD VALIDATION ═══
-    if (!email) {
+    if (!email || !sourceImageBase64 
+        || !targetImage) {
+      console.error('Missing fields:', {
+        email: !!email,
+        source: !!sourceImageBase64,
+        target: !!targetImage
+      })
       return new Response(
         JSON.stringify({ 
-          error: 'Missing email',
-          field: 'email' 
+          error: 'Missing required fields',
+          details: {
+            email: !email ? 'missing' : 'ok',
+            source: !sourceImageBase64 
+              ? 'missing' : 'ok',
+            target: !targetImage ? 'missing' : 'ok'
+          }
         }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    if (!sourceImageBase64) {
-      return new Response(
-        JSON.stringify({ 
-          error: 'Missing source image',
-          field: 'sourceImageBase64' 
-        }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    if (!targetImageBase64 && !targetTemplatePath) {
-      return new Response(
-        JSON.stringify({ 
-          error: 'Missing target image or template path',
-          field: 'targetImageBase64' 
-        }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers: corsHeaders }
       )
     }
 
@@ -216,45 +167,24 @@ serve(async (req) => {
 
     const historyId = historyRecord?.id
 
-    // ═══ PREPARE IMAGES WITH HELPER FUNCTION ═══
-    let sourceClean: string
-    let targetClean: string
-    const sourceMimeType = sourceMime || 'image/jpeg'
-    const targetMimeType = targetMime || 'image/jpeg'
+    // Get target image - either from base64 or storage path
+    targetImage = targetImageBase64
+    let targetMimeType = targetMime || 'image/jpeg'
 
-    try {
-      sourceClean = await prepareImageBase64(sourceImageBase64)
-    } catch (err: any) {
-      // Refund credit
-      await supabase
-        .from('waitlist_submissions')
-        .update({ credits: newCredits + 1 })
-        .eq('email', cleanEmail)
+    if (!targetImage && targetTemplatePath) {
+      // Download from Supabase Storage
+      const { data: fileData } = await supabase.storage
+        .from('nanoni-assets')
+        .download(targetTemplatePath)
 
-      if (historyId) {
-        await supabase
-          .from('generation_history')
-          .update({ status: 'failed', error_message: `Source image error: ${err.message}` })
-          .eq('id', historyId)
+      if (fileData) {
+        const buffer = await fileData.arrayBuffer()
+        targetImage = btoa(String.fromCharCode(...new Uint8Array(buffer)))
+        targetMimeType = fileData.type || 'image/jpeg'
       }
-
-      return new Response(
-        JSON.stringify({ 
-          error: `Source image error: ${err.message}`,
-          refunded: true,
-          creditsLeft: newCredits + 1
-        }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
     }
 
-    try {
-      const targetImageSource = targetImageBase64 || targetTemplatePath
-      if (!targetImageSource) {
-        throw new Error('No target image provided')
-      }
-      targetClean = await prepareImageBase64(targetImageSource)
-    } catch (err: any) {
+    if (!targetImage) {
       // Refund credit
       await supabase
         .from('waitlist_submissions')
@@ -264,16 +194,12 @@ serve(async (req) => {
       if (historyId) {
         await supabase
           .from('generation_history')
-          .update({ status: 'failed', error_message: `Target image error: ${err.message}` })
+          .update({ status: 'failed', error_message: 'No target image provided.' })
           .eq('id', historyId)
       }
 
       return new Response(
-        JSON.stringify({ 
-          error: `Target image error: ${err.message}`,
-          refunded: true,
-          creditsLeft: newCredits + 1
-        }),
+        JSON.stringify({ error: 'No target image provided.', refunded: true, creditsLeft: newCredits + 1 }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -338,15 +264,15 @@ serve(async (req) => {
             { text: 'Picture 1 (User\'s face):' },
             {
               inlineData: {
-                mimeType: sourceMimeType,
-                data: sourceClean,
+                mimeType: sourceMime || 'image/jpeg',
+                data: sourceImageBase64,
               },
             },
             { text: 'Picture 2 (Template/Background):' },
             {
               inlineData: {
                 mimeType: targetMimeType,
-                data: targetClean,
+                data: targetImage,
               },
             },
             { text: fullPrompt },

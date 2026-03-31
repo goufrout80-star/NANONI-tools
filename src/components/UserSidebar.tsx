@@ -113,7 +113,7 @@ export function UserSidebar() {
             <div className="px-3 py-2 space-y-1">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] text-soft-gray/60">Credits</span>
-                <span className="text-xs font-bold text-orange">{session.credits}</span>
+                <span className="text-xs font-bold text-orange">{Math.min(session.credits, 9999)}</span>
               </div>
               <div className="w-full h-1.5 rounded-full bg-white/5">
                 <div
@@ -128,7 +128,7 @@ export function UserSidebar() {
           {!isExpanded && session && (
             <div className="flex justify-center py-1">
               <span className="text-[10px] font-bold text-orange bg-orange/10 px-1.5 py-0.5 rounded-full border border-orange/20">
-                {session.credits}
+                {Math.min(session.credits, 9999)}
               </span>
             </div>
           )}

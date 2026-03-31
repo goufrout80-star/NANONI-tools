@@ -22,7 +22,7 @@ export default defineConfig(({ mode }) => ({
         "font-src 'self' https://fonts.gstatic.com",
         "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://res.cloudinary.com",
         "frame-src https://hcaptcha.com https://*.hcaptcha.com",
-        "img-src 'self' data: blob: https://res.cloudinary.com https://*.supabase.co",
+        "img-src 'self' data: blob: https://res.cloudinary.com",
       ].join('; '),
     },
   },

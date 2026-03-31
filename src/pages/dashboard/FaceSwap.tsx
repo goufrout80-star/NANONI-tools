@@ -298,6 +298,8 @@ export default function FaceSwap() {
       } else if (selectedTemplate) {
         // Send Cloudinary URL directly as targetImageBase64
         targetB64 = selectedTemplate.cloudinary_url
+        console.log('Target type:', selectedTemplate.cloudinary_url?.startsWith('http') ? 'URL (will be fetched server-side)' : 'base64')
+        console.log('Target length:', (selectedTemplate.cloudinary_url || '').length)
       }
 
       // Save uploaded target as template if checked

@@ -38,7 +38,7 @@ const App = () => (
         <SidebarProvider>
           <Toaster />
           <Sonner />
-          <BrowserRouter>
+          <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
             <Routes>
               {/* Public routes — use landing Layout */}
               <Route path="/" element={<Layout><Index /></Layout>} />
