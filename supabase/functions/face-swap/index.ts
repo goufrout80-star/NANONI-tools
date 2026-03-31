@@ -39,39 +39,11 @@ const SWAP_MODE_SUFFIXES: Record<string, string> = {
 const DEFAULT_PROMPT = `Make the person's face from picture number 1 replace the face in picture number 2. You can change the clothes but only one thing: don't change the hairstyle or anything about the character from picture number 1. Keep the same face of the person from picture one, don't change anything about their skin or face. Change the position of the person to make the picture look natural and well composed. Picture 1 is the user's face photo. Picture 2 is the template/background image. Create the final image with the face from picture 1 placed onto picture 2's scene/pose.`
 
 serve(async (req) => {
-  // Add CORS headers to all responses
-  const corsResponse = (body: any, status: number = 200) => {
-    return new Response(JSON.stringify(body), {
-      status,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    })
-  }
-
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
-    return new Response(null, { 
-      status: 200,
-      headers: corsHeaders 
-    })
+    return new Response('ok', { headers: corsHeaders })
   }
 
   try {
-    const body = await req.json()
-    
-    // Add detailed logging for debugging
-    console.log('Received body:', 
-      JSON.stringify({
-        hasEmail: !!body.email,
-        hasSource: !!body.sourceImageBase64,
-        hasTarget: !!body.targetImageBase64,
-        hasTemplatePath: !!body.targetTemplatePath,
-        hasCloudinaryUrl: !!body.targetCloudinaryUrl,
-        resolution: body.resolution,
-        swapMode: body.swapMode,
-        aspectRatio: body.aspectRatio
-      })
-    )
-
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -82,36 +54,30 @@ serve(async (req) => {
       sourceImageBase64,
       targetImageBase64,
       targetTemplatePath,
-      targetCloudinaryUrl,
       sourceMime,
       targetMime,
       resolution = '1K',
       aspectRatio,
       swapMode = 'default',
-    } = body
+    } = await req.json()
 
-    const targetImage = targetImageBase64 
-      || targetTemplatePath 
-      || targetCloudinaryUrl
+    console.log('Request validation:', {
+      hasEmail: !!email,
+      hasSource: !!sourceImageBase64,
+      hasTargetBase64: !!targetImageBase64,
+      hasTargetPath: !!targetTemplatePath,
+    })
 
-    if (!email || !sourceImageBase64 
-        || !targetImage) {
-      console.error('Missing fields:', {
-        email: !!email,
-        source: !!sourceImageBase64,
-        target: !!targetImage
-      })
+    if (!email || !sourceImageBase64) {
       return new Response(
         JSON.stringify({ 
-          error: 'Missing required fields',
+          error: 'Missing required fields.',
           details: {
-            email: !email ? 'missing' : 'ok',
-            source: !sourceImageBase64 
-              ? 'missing' : 'ok',
-            target: !targetImage ? 'missing' : 'ok'
+            email: !email ? 'missing' : 'present',
+            sourceImageBase64: !sourceImageBase64 ? 'missing' : 'present',
           }
         }),
-        { status: 400, headers: corsHeaders }
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -173,14 +139,22 @@ serve(async (req) => {
 
     if (!targetImage && targetTemplatePath) {
       // Download from Supabase Storage
-      const { data: fileData } = await supabase.storage
+      console.log('Attempting to download from storage:', targetTemplatePath)
+      const { data: fileData, error: downloadError } = await supabase.storage
         .from('nanoni-assets')
         .download(targetTemplatePath)
 
+      if (downloadError) {
+        console.error('Storage download error:', downloadError)
+      }
+
       if (fileData) {
+        console.log('File downloaded successfully, size:', fileData.size)
         const buffer = await fileData.arrayBuffer()
         targetImage = btoa(String.fromCharCode(...new Uint8Array(buffer)))
         targetMimeType = fileData.type || 'image/jpeg'
+      } else {
+        console.log('No file data returned from storage')
       }
     }
 
