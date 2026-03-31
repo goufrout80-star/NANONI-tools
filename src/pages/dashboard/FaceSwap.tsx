@@ -239,19 +239,6 @@ export default function FaceSwap() {
       reader.readAsDataURL(file)
     })
 
-  const urlToBase64 = async (url: string): Promise<string> => {
-    const response = await fetch(url)
-    const blob = await response.blob()
-    return new Promise((resolve) => {
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        const result = reader.result as string
-        resolve(result.split(',')[1]) // Remove data:image/...;base64, prefix
-      }
-      reader.readAsDataURL(blob)
-    })
-  }
-
   // Upload template
   const handleUploadTemplate = async (file: File) => {
     if (templates.length >= 10) {
@@ -303,17 +290,6 @@ export default function FaceSwap() {
     setResultImage(null)
 
     try {
-      // Add logging for debugging
-      console.log('Sending to face-swap:', {
-        hasEmail: !!session.email,
-        hasSource: !!sourceFile,
-        hasTarget: !!targetFile,
-        hasTemplate: !!selectedTemplate,
-        resolution,
-        swapMode,
-        aspectRatio
-      })
-
       const sourceB64 = await toBase64(sourceFile)
       let targetB64: string | undefined
       let targetPath: string | undefined
@@ -321,12 +297,7 @@ export default function FaceSwap() {
       if (targetFile) {
         targetB64 = await toBase64(targetFile)
       } else if (selectedTemplate) {
-        // Convert template URL to base64 if needed
-        if (selectedTemplate.url) {
-          targetB64 = await urlToBase64(selectedTemplate.url)
-        } else {
-          targetPath = selectedTemplate.storage_path
-        }
+        targetPath = selectedTemplate.storage_path
       }
 
       // Save uploaded target as template if checked
@@ -340,7 +311,6 @@ export default function FaceSwap() {
           sourceImageBase64: sourceB64,
           targetImageBase64: targetB64,
           targetTemplatePath: targetPath,
-          targetCloudinaryUrl: selectedTemplate?.url || undefined,
           sourceMime: sourceFile.type,
           targetMime: targetFile?.type,
           resolution,
@@ -349,7 +319,10 @@ export default function FaceSwap() {
         },
       })
 
+      console.log('Face-swap function response:', { data, fnError })
+
       if (fnError || !data?.success) {
+        console.error('Face-swap error details:', { fnError, data })
         setAnimError(true)
         setAnimRefunded(!!data?.refunded)
         setErrorMessage(data?.error || 'Face swap failed. Please try again.')
