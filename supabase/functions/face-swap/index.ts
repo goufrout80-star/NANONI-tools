@@ -49,6 +49,33 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     )
 
+    // ═══ DETAILED LOGGING — STEP 1 ═══
+    const rawBody = await req.text()
+    console.log('RAW BODY RECEIVED:', rawBody.slice(0, 500))
+
+    let body: any
+    try {
+      body = JSON.parse(rawBody)
+    } catch (e) {
+      console.error('JSON PARSE FAILED:', e)
+      return new Response(
+        JSON.stringify({ error: 'Invalid JSON body' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    console.log('PARSED FIELDS:', {
+      hasEmail: !!body?.email,
+      emailValue: body?.email,
+      hasSource: !!body?.sourceImageBase64,
+      sourceLength: body?.sourceImageBase64?.length,
+      hasTarget: !!body?.targetImageBase64,
+      targetLength: body?.targetImageBase64?.length,
+      hasTemplatePath: !!body?.targetTemplatePath,
+      resolution: body?.resolution,
+      allKeys: Object.keys(body || {})
+    })
+
     const {
       email,
       sourceImageBase64,
@@ -59,7 +86,7 @@ serve(async (req) => {
       resolution = '1K',
       aspectRatio,
       swapMode = 'default',
-    } = await req.json()
+    } = body
 
     console.log('Request validation:', {
       hasEmail: !!email,
@@ -68,14 +95,32 @@ serve(async (req) => {
       hasTargetPath: !!targetTemplatePath,
     })
 
-    if (!email || !sourceImageBase64) {
+    // ═══ SPECIFIC FIELD VALIDATION ═══
+    if (!email) {
       return new Response(
         JSON.stringify({ 
-          error: 'Missing required fields.',
-          details: {
-            email: !email ? 'missing' : 'present',
-            sourceImageBase64: !sourceImageBase64 ? 'missing' : 'present',
-          }
+          error: 'Missing email',
+          field: 'email' 
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    if (!sourceImageBase64) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Missing source image',
+          field: 'sourceImageBase64' 
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    if (!targetImageBase64 && !targetTemplatePath) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Missing target image or template path',
+          field: 'targetImageBase64' 
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
