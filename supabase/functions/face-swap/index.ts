@@ -191,6 +191,28 @@ serve(async (req) => {
 
       if (downloadError) {
         console.error('Storage download error:', downloadError)
+        
+        // Refund credit
+        await supabase
+          .from('waitlist_submissions')
+          .update({ credits: newCredits + 1 })
+          .eq('email', cleanEmail)
+
+        if (historyId) {
+          await supabase
+            .from('generation_history')
+            .update({ status: 'failed', error_message: `Template not found: ${targetTemplatePath}` })
+            .eq('id', historyId)
+        }
+
+        return new Response(
+          JSON.stringify({ 
+            error: `Template file not found in storage. Please try uploading a new target image or select a different template.`,
+            refunded: true,
+            creditsLeft: newCredits + 1
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
       }
 
       if (fileData) {
@@ -199,7 +221,27 @@ serve(async (req) => {
         targetImage = btoa(String.fromCharCode(...new Uint8Array(buffer)))
         targetMimeType = fileData.type || 'image/jpeg'
       } else {
-        console.log('No file data returned from storage')
+        // Refund credit
+        await supabase
+          .from('waitlist_submissions')
+          .update({ credits: newCredits + 1 })
+          .eq('email', cleanEmail)
+
+        if (historyId) {
+          await supabase
+            .from('generation_history')
+            .update({ status: 'failed', error_message: `Template not found: ${targetTemplatePath}` })
+            .eq('id', historyId)
+        }
+
+        return new Response(
+          JSON.stringify({ 
+            error: `Template file not found in storage. Please try uploading a new target image or select a different template.`,
+            refunded: true,
+            creditsLeft: newCredits + 1
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
       }
     }
 
@@ -218,7 +260,11 @@ serve(async (req) => {
       }
 
       return new Response(
-        JSON.stringify({ error: 'No target image provided.', refunded: true, creditsLeft: newCredits + 1 }),
+        JSON.stringify({ 
+          error: 'No target image provided.',
+          refunded: true,
+          creditsLeft: newCredits + 1
+        }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
