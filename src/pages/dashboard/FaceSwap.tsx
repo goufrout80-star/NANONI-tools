@@ -340,6 +340,7 @@ export default function FaceSwap() {
           sourceImageBase64: sourceB64,
           targetImageBase64: targetB64,
           targetTemplatePath: targetPath,
+          targetCloudinaryUrl: selectedTemplate?.url || undefined,
           sourceMime: sourceFile.type,
           targetMime: targetFile?.type,
           resolution,
