@@ -305,6 +305,15 @@ export default function FaceSwap() {
         handleUploadTemplate(targetFile)
       }
 
+      console.log('Sending to face-swap:', {
+        hasEmail: !!session.email,
+        hasSource: !!sourceB64,
+        hasTarget: !!targetB64,
+        hasTemplate: !!targetPath,
+        resolution,
+        swapMode,
+      })
+
       const { data, error: fnError } = await supabase.functions.invoke('face-swap', {
         body: {
           email: session.email,
