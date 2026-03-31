@@ -52,6 +52,7 @@ serve(async (req) => {
         hasSource: !!body.sourceImageBase64,
         hasTarget: !!body.targetImageBase64,
         hasTemplatePath: !!body.targetTemplatePath,
+        hasCloudinaryUrl: !!body.targetCloudinaryUrl,
         resolution: body.resolution,
         swapMode: body.swapMode,
         aspectRatio: body.aspectRatio
@@ -68,6 +69,7 @@ serve(async (req) => {
       sourceImageBase64,
       targetImageBase64,
       targetTemplatePath,
+      targetCloudinaryUrl,
       sourceMime,
       targetMime,
       resolution = '1K',
@@ -76,7 +78,8 @@ serve(async (req) => {
     } = body
 
     const targetImage = targetImageBase64 
-      || targetTemplatePath
+      || targetTemplatePath 
+      || targetCloudinaryUrl
 
     if (!email || !sourceImageBase64 
         || !targetImage) {
