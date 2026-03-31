@@ -126,6 +126,37 @@ serve(async (req) => {
       )
     }
 
+    // Handle source image if it's a Cloudinary URL
+    let sourceBase64 = sourceImageBase64
+    let sourceMimeType = sourceMime || 'image/jpeg'
+
+    if (sourceImageBase64.startsWith('http')) {
+      console.log('Fetching source from Cloudinary:', sourceImageBase64.slice(0, 80))
+      
+      const imgResponse = await fetch(sourceImageBase64)
+      
+      if (!imgResponse.ok) {
+        return new Response(
+          JSON.stringify({ 
+            error: 'Failed to fetch source image'
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+      
+      const arrayBuffer = await imgResponse.arrayBuffer()
+      const uint8Array = new Uint8Array(arrayBuffer)
+      
+      let binary = ''
+      uint8Array.forEach(byte => {
+        binary += String.fromCharCode(byte)
+      })
+      sourceBase64 = btoa(binary)
+      sourceMimeType = imgResponse.headers.get('content-type') || 'image/jpeg'
+      
+      console.log('Source image fetched from Cloudinary, size:', arrayBuffer.byteLength)
+    }
+
     const cleanEmail = email.toLowerCase().trim()
 
     // Verify user exists and is approved
@@ -178,74 +209,12 @@ serve(async (req) => {
 
     const historyId = historyRecord?.id
 
-    // Get target image - either from base64 or storage path
-    let targetImage = targetImageBase64
+    // Get target image - either from base64 or Cloudinary URL
+    const targetImageSource = targetImageBase64 || targetTemplatePath
+    let targetImage: string
     let targetMimeType = targetMime || 'image/jpeg'
 
-    if (!targetImage && targetTemplatePath) {
-      // Download from Supabase Storage
-      console.log('Attempting to download from storage:', targetTemplatePath)
-      const { data: fileData, error: downloadError } = await supabase.storage
-        .from('nanoni-assets')
-        .download(targetTemplatePath)
-
-      if (downloadError) {
-        console.error('Storage download error:', downloadError)
-        
-        // Refund credit
-        await supabase
-          .from('waitlist_submissions')
-          .update({ credits: newCredits + 1 })
-          .eq('email', cleanEmail)
-
-        if (historyId) {
-          await supabase
-            .from('generation_history')
-            .update({ status: 'failed', error_message: `Template not found: ${targetTemplatePath}` })
-            .eq('id', historyId)
-        }
-
-        return new Response(
-          JSON.stringify({ 
-            error: `Template file not found in storage. Please try uploading a new target image or select a different template.`,
-            refunded: true,
-            creditsLeft: newCredits + 1
-          }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
-      }
-
-      if (fileData) {
-        console.log('File downloaded successfully, size:', fileData.size)
-        const buffer = await fileData.arrayBuffer()
-        targetImage = btoa(String.fromCharCode(...new Uint8Array(buffer)))
-        targetMimeType = fileData.type || 'image/jpeg'
-      } else {
-        // Refund credit
-        await supabase
-          .from('waitlist_submissions')
-          .update({ credits: newCredits + 1 })
-          .eq('email', cleanEmail)
-
-        if (historyId) {
-          await supabase
-            .from('generation_history')
-            .update({ status: 'failed', error_message: `Template not found: ${targetTemplatePath}` })
-            .eq('id', historyId)
-        }
-
-        return new Response(
-          JSON.stringify({ 
-            error: `Template file not found in storage. Please try uploading a new target image or select a different template.`,
-            refunded: true,
-            creditsLeft: newCredits + 1
-          }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
-      }
-    }
-
-    if (!targetImage) {
+    if (!targetImageSource) {
       // Refund credit
       await supabase
         .from('waitlist_submissions')
@@ -267,6 +236,53 @@ serve(async (req) => {
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
+    }
+
+    if (targetImageSource.startsWith('http')) {
+      // It's a Cloudinary URL — fetch and convert to base64
+      console.log('Fetching from Cloudinary:', targetImageSource.slice(0, 80))
+      
+      const imgResponse = await fetch(targetImageSource)
+      
+      if (!imgResponse.ok) {
+        // Refund credit
+        await supabase
+          .from('waitlist_submissions')
+          .update({ credits: newCredits + 1 })
+          .eq('email', cleanEmail)
+
+        if (historyId) {
+          await supabase
+            .from('generation_history')
+            .update({ status: 'failed', error_message: 'Failed to fetch target image from Cloudinary' })
+            .eq('id', historyId)
+        }
+
+        return new Response(
+          JSON.stringify({ 
+            error: 'Failed to fetch target image',
+            refunded: true,
+            creditsLeft: newCredits + 1
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+      
+      const arrayBuffer = await imgResponse.arrayBuffer()
+      const uint8Array = new Uint8Array(arrayBuffer)
+      
+      // Convert to base64
+      let binary = ''
+      uint8Array.forEach(byte => {
+        binary += String.fromCharCode(byte)
+      })
+      targetImage = btoa(binary)
+      targetMimeType = imgResponse.headers.get('content-type') || 'image/jpeg'
+      
+      console.log('Cloudinary image fetched, size:', arrayBuffer.byteLength)
+    } else {
+      // Already base64 from direct upload
+      targetImage = targetImageSource
     }
 
     // Get API key from admin_settings
@@ -329,8 +345,8 @@ serve(async (req) => {
             { text: 'Picture 1 (User\'s face):' },
             {
               inlineData: {
-                mimeType: sourceMime || 'image/jpeg',
-                data: sourceImageBase64,
+                mimeType: sourceMimeType,
+                data: sourceBase64,
               },
             },
             { text: 'Picture 2 (Template/Background):' },
