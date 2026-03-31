@@ -20,7 +20,7 @@ export default defineConfig(({ mode }) => ({
         "script-src 'self' 'unsafe-inline' https://js.hcaptcha.com",
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
         "font-src 'self' https://fonts.gstatic.com",
-        "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
+        "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://res.cloudinary.com",
         "frame-src https://hcaptcha.com https://*.hcaptcha.com",
         "img-src 'self' data: blob: https://res.cloudinary.com",
       ].join('; '),
