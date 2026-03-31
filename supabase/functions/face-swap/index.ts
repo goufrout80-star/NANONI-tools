@@ -43,6 +43,21 @@ serve(async (req) => {
   }
 
   try {
+    const body = await req.json()
+    
+    // Add detailed logging for debugging
+    console.log('Received body:', 
+      JSON.stringify({
+        hasEmail: !!body.email,
+        hasSource: !!body.sourceImageBase64,
+        hasTarget: !!body.targetImageBase64,
+        hasTemplatePath: !!body.targetTemplatePath,
+        resolution: body.resolution,
+        swapMode: body.swapMode,
+        aspectRatio: body.aspectRatio
+      })
+    )
+
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -58,12 +73,29 @@ serve(async (req) => {
       resolution = '1K',
       aspectRatio,
       swapMode = 'default',
-    } = await req.json()
+    } = body
 
-    if (!email || !sourceImageBase64) {
+    const targetImage = targetImageBase64 
+      || targetTemplatePath
+
+    if (!email || !sourceImageBase64 
+        || !targetImage) {
+      console.error('Missing fields:', {
+        email: !!email,
+        source: !!sourceImageBase64,
+        target: !!targetImage
+      })
       return new Response(
-        JSON.stringify({ error: 'Missing required fields.' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ 
+          error: 'Missing required fields',
+          details: {
+            email: !email ? 'missing' : 'ok',
+            source: !sourceImageBase64 
+              ? 'missing' : 'ok',
+            target: !targetImage ? 'missing' : 'ok'
+          }
+        }),
+        { status: 400, headers: corsHeaders }
       )
     }
 
