@@ -290,14 +290,25 @@ export default function FaceSwap() {
     setResultImage(null)
 
     try {
+      console.log('Starting face-swap generation:', {
+        hasSourceFile: !!sourceFile,
+        hasTargetFile: !!targetFile,
+        hasSelectedTemplate: !!selectedTemplate,
+      })
+
       const sourceB64 = await toBase64(sourceFile)
+      console.log('Source image converted, length:', sourceB64?.length || 0)
+
       let targetB64: string | undefined
       let targetPath: string | undefined
 
       if (targetFile) {
+        console.log('Converting target file to base64...')
         targetB64 = await toBase64(targetFile)
+        console.log('Target image converted, length:', targetB64?.length || 0)
       } else if (selectedTemplate) {
         targetPath = selectedTemplate.storage_path
+        console.log('Using template path:', targetPath)
       }
 
       // Save uploaded target as template if checked
@@ -310,6 +321,8 @@ export default function FaceSwap() {
         hasSource: !!sourceB64,
         hasTarget: !!targetB64,
         hasTemplate: !!targetPath,
+        sourceLength: sourceB64?.length || 0,
+        targetLength: targetB64?.length || 0,
         resolution,
         swapMode,
       })
